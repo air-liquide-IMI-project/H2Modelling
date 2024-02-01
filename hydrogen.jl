@@ -28,7 +28,7 @@ for i in 1:(number_day-1)
 end
 
 Length_hyd_stock_level = 10
-Variance_2 = 50
+Variance_2 = 100
 hyd_stock_min = 0
 hyd_stock_max = 500
 
@@ -60,13 +60,15 @@ efficiency_bat = 0.9
 Ener_stored_bat_initial = 0
 Hydrogen_stored_tank_initial = 0
 
+plot_array_energy = Any[]
+plot_array_hydrogen_storage = Any[]
 
 
 Length_D = length(D)
 for test in 1:7
 
 
-    hyd_stock_level = [floor(Int, rand(Truncated(Normal(300, Variance_2), hyd_stock_min, hyd_stock_max))) for i in 1:Length_hyd_stock_level]
+    hyd_stock_level = [floor(Int, rand(Truncated(Normal(200, Variance_2), hyd_stock_min, hyd_stock_max))) for i in 1:Length_hyd_stock_level]
     index_hyd_stock_level = random_generate_index(number_hour)
 
     model = Model(HiGHS.Optimizer) # this part allows to generate our initial solution
@@ -118,22 +120,36 @@ for test in 1:7
     Hydrogen_stored_tank_opt = JuMP.value.(Hydrogen_stored_tank)
 
 
-    x = [i for i in 1:Length_D]
-    y1 = [Ener_PPA_opt[i] for i in 1:Length_D]
-    y2 = [Ener_Market_opt[i] for i in 1:Length_D]
-    y3 = [Ener_stored_bat_opt[i] for i in 1:Length_D]
+    x = [24*i for i in 1:trunc(Int,Length_D/24)]
+    y1 = [Ener_PPA_opt[24*i] for i in 1:trunc(Int,Length_D/24)]
+    y2 = [Ener_Market_opt[24*i] for i in 1:trunc(Int,Length_D/24)]
+    y3 = [Ener_stored_bat_opt[24*i] for i in 1:trunc(Int,Length_D/24)]
 
     h1 = [Hydrogen_stored_tank_opt[i] for i in 1:Length_D]
 
 
     plot(x, y1, label="Energy from PPA", xlabel="Hours", ylabel="Value in MW")
     plot!(x, y2, label="Energy from market")
-    plot!(x, y3, label="Energy from battery", xlabel="Hours")
+    plot_test_energy = plot!(x, y3, label="Energy from battery", xlabel="Hours")
+    push!(plot_array_energy, plot_test_energy )
 
-    plot(index_hyd_stock_level, h1, label="Hydrogen_stored_tank", xlabel="Hours", ylabel="Value in kg")
+    plot_hyd_storage = plot(index_hyd_stock_level, h1, label="Hydrogen_stored_tank", xlabel="Hours", ylabel="Value in kg")
+    push!(plot_array_hydrogen_storage, plot_hyd_storage)
 end
 
-
+x = [7*i for i in 1:trunc(Int,Length_D/7)]
 x = [i for i in 1:7]
 plot(x, Best_cost, label ="Best_cost", xlabel = "test", ylabel = "cost in euro")
 
+
+
+for (i, p) in enumerate(plot_array_energy)
+    savefig(p, "plots/plot_energy$i.png")  # Save each plot as a separate PNG file
+end
+
+# plot_array_energy
+# plot(plot_array_hydrogen_storage ...)
+
+# for (i, p) in enumerate(plot_array_hydrogen_storage)
+#     savefig(p, "plots/plot_hydrogen_storage$i.png")  # Save each plot as a separate PNG file
+# end
