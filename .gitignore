@@ -1,1 +1,9 @@
+<<<<<<< HEAD
 myenv
+=======
+Lib/
+Scripts/
+share/
+pyenv.cfg
+```
+>>>>>>> c7ed25e2b5dd31991793526be44f767f2c154764
