@@ -3,13 +3,17 @@ using Pkg
 # Pkg.add("Distributions")
 # Pkg.add("JuMP")
 # Pkg.add("HiGHS")
+# Pkg.add("PlotlyJS")
 using Distributions
 using JuMP
 using HiGHS
 using Plots
 using Random
+using PlotlyJS
+
 
 Best_cost = Vector{Float64}()
+Best_cost_plot_trimester = Vector{Any}()
 
 number_day = 28
 # D = [1000 for i in 1:24]
@@ -27,7 +31,7 @@ for i in 1:(number_day-1)
     Cost_market = vcat(Cost_market, Cost_Market_1,[27.07, 26.43, 27.53, 29.05, 31.42, 39.92, 41.3, 41.51, 39.75, 30.13, 30.36, 32.4])
 end
 
-Length_hyd_stock_level = 10
+Length_hyd_stock_level = 4
 Variance_2 = 100
 hyd_stock_min = 0
 hyd_stock_max = 500
@@ -62,14 +66,24 @@ Hydrogen_stored_tank_initial = 0
 
 plot_array_energy = Any[]
 plot_array_hydrogen_storage = Any[]
-
+index_hyd_stock_level = Any[]
+Hydrogen_stored_tank_opt = Any[]
 
 Length_D = length(D)
-for test in 1:7
+Nb_month = 40
 
+hyd_stock_level_test = [floor(Int, rand(Truncated(Normal(200, Variance_2), hyd_stock_min, hyd_stock_max))) for i in 1:Nb_month]
 
-    hyd_stock_level = [floor(Int, rand(Truncated(Normal(200, Variance_2), hyd_stock_min, hyd_stock_max))) for i in 1:Length_hyd_stock_level]
-    index_hyd_stock_level = random_generate_index(number_hour)
+for test in 1:Nb_month
+
+    if (test%4 == 0)
+        D = [floor(Int, rand(Truncated(Normal(1000, Variance), Demand_min, Demand_max))) for i in 1:(24*number_day)]
+    end
+    # hyd_stock_level = [floor(Int, rand(Truncated(Normal(200, Variance_2), hyd_stock_min, hyd_stock_max))) for i in 1:Length_hyd_stock_level]
+    # index_hyd_stock_level = sort(random_generate_index(number_hour))
+
+    hyd_stock_level = [hyd_stock_level_test[test] for i in 1:Length_hyd_stock_level]
+    index_hyd_stock_level = [i*7*24 for i in 1:Length_hyd_stock_level]
 
     model = Model(HiGHS.Optimizer) # this part allows to generate our initial solution
     set_attribute(model, "time_limit", 360.0) # we may need to have a longer time to run
@@ -133,13 +147,20 @@ for test in 1:7
     plot_test_energy = plot!(x, y3, label="Energy from battery", xlabel="Hours")
     push!(plot_array_energy, plot_test_energy )
 
-    plot_hyd_storage = plot(index_hyd_stock_level, h1, label="Hydrogen_stored_tank", xlabel="Hours", ylabel="Value in kg")
+    plot(index_hyd_stock_level, h1[index_hyd_stock_level], label="Hydrogen_stored_tank", xlabel="Hours", ylabel="Value in kg")
+    plot_hyd_storage = plot!(index_hyd_stock_level, hyd_stock_level, label ="Hyd_sotck_level_constraint")
     push!(plot_array_hydrogen_storage, plot_hyd_storage)
 end
 
-x = [7*i for i in 1:trunc(Int,Length_D/7)]
-x = [i for i in 1:7]
-plot(x, Best_cost, label ="Best_cost", xlabel = "test", ylabel = "cost in euro")
+# x = [Nb_test*i for i in 1:trunc(Int,Length_D/Nb_test)]
+x = [i for i in 1:Nb_month]
+
+plot(x, hyd_stock_level_test, label ="hydrogen_sotck_level_test", ylabel = "H2 level in Kg", color=:red)
+
+Best_cost_plot = plot!(twinx(), x, Best_cost, label ="Best_cost", xlabel = "month", ylabel = "cost in euro")
+
+
+savefig(Best_cost_plot, "plots/best_cost_plot.png")
 
 
 
@@ -147,9 +168,57 @@ for (i, p) in enumerate(plot_array_energy)
     savefig(p, "plots/plot_energy$i.png")  # Save each plot as a separate PNG file
 end
 
-# plot_array_energy
-# plot(plot_array_hydrogen_storage ...)
 
-# for (i, p) in enumerate(plot_array_hydrogen_storage)
-#     savefig(p, "plots/plot_hydrogen_storage$i.png")  # Save each plot as a separate PNG file
-# end
+for (i, p) in enumerate(plot_array_hydrogen_storage)
+    savefig(p, "plots/plot_hydrogen_storage$i.png")  # Save each plot as a separate PNG file
+end
+
+G = Vector{Any}()
+
+JU = [5,6,3,4,5,7,8]
+JU[2:5]
+
+
+# Best_cost = Vector{Float64}()
+Best_cost_plot_tot = Vector{Any}()
+x = [i for i in 1:Nb_month]
+for i in 1:10
+    plot(x[1 + (i-1)*4: 4*i], hyd_stock_level_test[1 + (i-1)*4: 4*i], label ="hydrogen_sotck_level_test", ylabel = "H2 level in Kg", color=:red, legend=false, yguidefontcolor=:red, size=(2000, 2000))
+    Best_cost_plot_trimester = plot!(twinx(), x[1 + (i-1)*4: 4*i], Best_cost[1 + (i-1)*4: 4*i], label ="Best_cost", xlabel = "month", ylabel = "cost in euro", legend=false, yguidefontcolor=:blue, size=(2000, 2000))
+    push!(Best_cost_plot_tot,Best_cost_plot_trimester)
+end
+
+
+
+
+H = [
+    Best_cost_plot_tot[1] Best_cost_plot_tot[2] 
+    Best_cost_plot_tot[3] Best_cost_plot_tot[4] 
+    Best_cost_plot_tot[5] Best_cost_plot_tot[6] 
+    Best_cost_plot_tot[7] Best_cost_plot_tot[8]
+    Best_cost_plot_tot[9] Plot_energy_vector[1] 
+]
+
+Plot_energy_vector = Vector{Any}()
+for i in 1:40
+    push!(Plot_energy_vector,plot_array_energy[i] )
+end
+Best_cost_plot_tot[1]
+Plot_energy_vector[ 4]
+
+P = [
+    Plot_energy_vector[1 +(1-1)*4] Plot_energy_vector[2 +(1-1)*4] 
+    Plot_energy_vector[3 +(1-1)*4] Plot_energy_vector[4 +(1-1)*4] 
+]
+
+for i in 1:10
+    Ploty = [
+    Plot_energy_vector[1+(i-1)*4] Plot_energy_vector[2+(i-1)*4]
+    Plot_energy_vector[3+(i-1)*4] Plot_energy_vector[4+(i-1)*4] 
+]
+    Plot_energy = plot(Ploty...)
+    savefig(Plot_energy,"plots/plot_energy_trimester$i.png")
+end
+
+H = plot(H...)
+savefig(H,"plots/h.png")
