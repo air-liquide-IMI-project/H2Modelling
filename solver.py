@@ -1,22 +1,6 @@
 from pulp import *
- 
-# Default values
-D = 1000 # Kg of H2
-PPA = [50] * 18 + [40, 30, 20, 10, 0, 50] # Mwh
-PPPA = 20 # € / MWh
-PT = [20.79, 17.41, 16.24, 11.9, 9.77, 15.88, 24.88, 29.7, 35.01, 33.95, 29.9, 29.03] # € / MWh
-PT += [27.07, 26.43, 27.53, 29.05, 31.42, 39.92, 41.3, 41.51, 39.75, 30.13, 30.36, 32.4]
 
-EBAT = 0.9
-CBAT = 400 # MWh
-FBAT = 100 # MW
-
-EELEC = 0.050 # Mwh / Kg
-CELEC = 1000 # MW
-
-CTANK = 500 # Kg
-
-def solve(demand = D, ppa = PPA, pppa = PPPA, pt = PT, ebat = EBAT, cbat = CBAT, fbat = FBAT, eelec = EELEC, celec = CELEC, ctank = CTANK):
+def solve(demand, ppa, pppa, pt, ebat, cbat, fbat, eelec, celec, ctank, initCharge, initStock, finalStock=None, finalCharge=None):
     """
     Parameters ::
     - demand : Demand of hydrogen (Kg), constant
@@ -28,7 +12,11 @@ def solve(demand = D, ppa = PPA, pppa = PPPA, pt = PT, ebat = EBAT, cbat = CBAT,
     - fbat : Maximum flow of energy to / from the battery (MW)
     - eelec : Electricity consumption for 1 Kg of hydrogen (MWh / Kg)
     - celec : Maximum electricity consumption of the electrolyzer (MW)
-    - ctank : Capacity of the tank (Kg) \n
+    - ctank : Capacity of the tank (Kg)
+    - initCharge : Initial charge of the battery (MWh)
+    - initStock : Initial stock of the tank (Kg)
+    - finalStock : Final stock of the tank (Kg), if None, the final stock is not constrained
+    - finalCharge : Final charge of the battery (MWh), if None, the final charge is not constrained \n
     Returns a dictionnary with following keys ::
     - charge : Battery charge (MWh)
     - prod : Production of hydrogen (Kg)
@@ -39,8 +27,8 @@ def solve(demand = D, ppa = PPA, pppa = PPPA, pt = PT, ebat = EBAT, cbat = CBAT,
     - flowH2 : Flow of hydrogen to / from the tank ( > 0 if charging, < 0 if discharging) (Kg)
     """
     # Create the model
-    problem = LpProblem("Production Problem", LpMaximize)
-    T = len(PPA) # Number of hours
+    problem = LpProblem("Production Problem", LpMinimize)
+    T = len(ppa) # Number of hours
     indices = range(T) 
     indicesExt = range(T+1) # Add the first hour of the next day (Final state)
     # Variables
@@ -54,8 +42,8 @@ def solve(demand = D, ppa = PPA, pppa = PPPA, pt = PT, ebat = EBAT, cbat = CBAT,
     # Convert the per month discharge loss to per hour
     ebatPerHour = ebat**(1/(30*24))
     #Initial state
-    problem += charge[0] == 0
-    problem += stock[0] == 0
+    problem += charge[0] == initCharge
+    problem += stock[0] == initStock
 
     for t in range(T):
         # PPA constraints, we need to respect the PPA contract
@@ -79,6 +67,13 @@ def solve(demand = D, ppa = PPA, pppa = PPPA, pt = PT, ebat = EBAT, cbat = CBAT,
         # Capacity constraints for battery and tank
         problem += charge[t] <= cbat
         problem += stock[t] <= ctank
+
+    # Final state constraints
+    if finalStock is not None:
+        problem += stock[T] == finalStock
+
+    if finalCharge is not None:
+        problem += charge[T] == finalCharge
 
     # Objective function
     problem += sum([pppa * consPPA[t] + pt[t] * elecGrid[t] for t in indices])
