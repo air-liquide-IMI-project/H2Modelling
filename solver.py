@@ -47,13 +47,13 @@ def solve(demand, ppa, pppa, pt, ebat, cbat, fbat, eelec, celec, ctank, initChar
 
     for t in range(T):
         # PPA constraints, we need to respect the PPA contract
-        problem += consPPA[t] == ppa[t] 
+        problem += consPPA[t] == ppa[t]
+        # Demand satisfaction
+        problem += prod[t] == demand + flowH2[t] 
         # Electricity consumption
         problem += consPPA[t] + elecGrid[t] == eelec * prod[t] + flowBat[t]
         # Battery constraints
         problem += ebatPerHour * charge[t] + flowBat[t] == charge[t+1]
-        # Demand satisfaction
-        problem += prod[t] == demand + flowH2[t]
         # Tank constraints
         problem += stock[t] + flowH2[t] == stock[t+1]
         # Flow constraints
