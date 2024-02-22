@@ -3,24 +3,21 @@ import numpy as np
 
 
 def load_profiles(filename, profile_names = []):
-
     # Load the data
     data = pd.read_csv(filename)
-    print(data.head())
-    columns = data.columns
-    #filter the columns
-    
-
-    # Create a dictionary to store the profiles
-    profiles = {}
-
-    # Extract the profiles
-    for profile_name in profile_names:
-        profiles[profile_name] = np.array(data[profile_name])
-
-    return profiles
-
+    # Format the time column and set it as the index
+    timeColumn = "utc_timestamp"
+    time = pd.to_datetime(data[timeColumn], format='%Y-%m-%dT%H:%M:%SZ', utc=True)
+    data.set_index(time, inplace=True)
+    # Remove the NA values
+    data = data.interpolate(method='time')
+    # Drop the columns that are not needed
+    for column in data.columns:
+        if column not in profile_names:
+            data = data.drop(column, axis=1)
+    # Return the data
+    return data
 
 if __name__ == "__main__":
-    profiles = load_profiles("profiles.csv")
-    print(profiles)
+    profiles = load_profiles("profiles.csv", ["DE_wind_profile", "DE_solar_profile"])
+    print(profiles.head())
