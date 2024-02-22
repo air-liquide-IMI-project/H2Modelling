@@ -1,35 +1,70 @@
 using Pkg
+
 # Pkg.add("Plots")
 # Pkg.add("Distributions")
 # Pkg.add("JuMP")
 # Pkg.add("HiGHS")
 # Pkg.add("PlotlyJS")
+# Pkg.add("SQLite")
+# Pkg.add("CSV")
+
+using SQLite
 using Distributions
 using JuMP
 using HiGHS
 using Plots
 using Random
 using PlotlyJS
+using CSV
 
+db = SQLite.DB(raw"Mix_date_generation_price.sqlite")
+db
+
+
+strq = DBInterface.execute(db, "SELECT DE_solar_generation_actual FROM Mix_date_generation_price")
+strq_price = DBInterface.execute(db, "SELECT DE_price_day_ahead FROM Mix_date_generation_price")
+
+FRF = Int[] 
+DE_price  = Float64[]
+
+strq
+g=0
+for row in strq
+    push!(FRF, Int(row[1])) # Assuming the value is in the first column
+end
+
+for row in strq_price
+    push!(DE_price, row[1]) # Assuming the value is in the first column
+end
+g
+DE_price
+
+FRF
 
 Best_cost = Vector{Float64}()
 Best_cost_plot_trimester = Vector{Any}()
 
 number_day = 28
 # D = [1000 for i in 1:24]
-Variance = 400
-Demand_min = 0
-Demand_max = 3000
+# Variance = 400
+# Demand_min = 0
+# Demand_max = 3000
 
-D = [floor(Int, rand(Truncated(Normal(1000, Variance), Demand_min, Demand_max))) for i in 1:(24*number_day)]
-PPA = vcat([50 for i in 1:18],[40, 30, 20, 10, 0, 50])
-Cost_market = [20.79, 17.41, 16.24, 11.9, 9.77, 15.88, 24.88, 29.7, 35.01, 33.95, 29.9, 29.03]
-Cost_market = vcat(Cost_market,[27.07, 26.43, 27.53, 29.05, 31.42, 39.92, 41.3, 41.51, 39.75, 30.13, 30.36, 32.4])
-for i in 1:(number_day-1)
-    PPA = vcat(PPA,[50 for i in 1:18],[40, 30, 20, 10, 0, 50])
-    Cost_Market_1 = [20.79, 17.41, 16.24, 11.9, 9.77, 15.88, 24.88, 29.7, 35.01, 33.95, 29.9, 29.03]
-    Cost_market = vcat(Cost_market, Cost_Market_1,[27.07, 26.43, 27.53, 29.05, 31.42, 39.92, 41.3, 41.51, 39.75, 30.13, 30.36, 32.4])
-end
+# D = [floor(Int, rand(Truncated(Normal(1000, Variance), Demand_min, Demand_max))) for i in 1:(24*number_day)]
+D = [1000 for i in 1:(24*number_day)]
+Length_D = length(D)
+PPA = FRF[1:Length_D]
+
+
+# Cost_market = [20.79, 17.41, 16.24, 11.9, 9.77, 15.88, 24.88, 29.7, 35.01, 33.95, 29.9, 29.03]
+# Cost_market = vcat(Cost_market,[27.07, 26.43, 27.53, 29.05, 31.42, 39.92, 41.3, 41.51, 39.75, 30.13, 30.36, 32.4])
+# for i in 1:(number_day-1)
+#     PPA = vcat(PPA,[50 for i in 1:18],[40, 30, 20, 10, 0, 50])
+#     Cost_Market_1 = [20.79, 17.41, 16.24, 11.9, 9.77, 15.88, 24.88, 29.7, 35.01, 33.95, 29.9, 29.03]
+#     Cost_market = vcat(Cost_market, Cost_Market_1,[27.07, 26.43, 27.53, 29.05, 31.42, 39.92, 41.3, 41.51, 39.75, 30.13, 30.36, 32.4])
+# end
+
+Cost_market = DE_price[1:Length_D]
 
 Length_hyd_stock_level = 4
 Variance_2 = 100

@@ -1,7 +1,7 @@
-# install.packages("RSQLite")
+#install.packages("RSQLite")
 library(RSQLite)
-setwd("C:/Users/bapti/Downloads")
-conn <- dbConnect(RSQLite::SQLite(), "time_series.sqlite")
+setwd("C:/Users/33782/OneDrive/Documents/ProjetIMI")
+conn <- dbConnect(RSQLite::SQLite(), "time_series_energy_60min.sqlite3")
 #
 dbListTables(conn)
 time_series_60min <- dbGetQuery(conn, "SELECT * FROM  time_series_60min_singleindex")
@@ -25,8 +25,8 @@ library(stats)
 library(tseries)
 library(forecast)
 # head(time_series_60min)
-# selected_columns <- time_series_60min[,
-#                                 endsWith(colnames(time_series_60min), "capacity")]
+selected_columns <- time_series_60min[,
+                                endsWith(colnames(time_series_60min), "capacity") | endsWith(colnames(time_series_60min), "profile") ]
 # d2 <- cbind(time_series_60min[, 1:2], selected_columns)
 # selected_columns_2 <- time_series_60min[, grepl("price_day", names(time_series_60min))]
 # column_names <- names(selected_columns_2)
@@ -35,13 +35,15 @@ library(forecast)
 # countries_with_price <- time_series_60min[, grepl(paste(first_two_letters, collapse = "|"), names(time_series_60min))]
 
 
+testtest <- 7
+
 df_test<-time_series_60min
 df_test$utc_timestamp <- as.POSIXct(time_series_60min$utc_timestamp, format = "%Y-%m-%dT%H:%M:%S", tz = "UTC")
 filtered_times_series_60_min <- df_test[df_test$utc_timestamp > as.POSIXct("2017-09-30T23:00:00Z"), ]
 filtered_times_series_60_min<- filtered_times_series_60_min[, -2]  # Delete the second column
 test_time <-read.zoo(filtered_times_series_60_min)
 selected_columns_3 <- filtered_times_series_60_min[,
-                                      endsWith(colnames(filtered_times_series_60_min), "actual")]
+                                                   endsWith(colnames(filtered_times_series_60_min), "actual")]
 selected_columns_2 <- time_series_60min[, grepl("price_day", names(time_series_60min)) ]
 
 Country_name <- c("FR", "DE", "GB", "DK", "NO", "SE", "IT")
@@ -283,11 +285,6 @@ kpss.test(DE_solar_generation_actual_2017_2018)
 
 con <- dbConnect(RSQLite::SQLite(), dbname = "Mix_date_generation_price.sqlite")
 
-# Assume 'my_dataframe' is your dataframe
-my_dataframe <- data.frame(
-  ID = 1:5,
-  Name = c("Alice", "Bob", "Charlie", "David", "Eve")
-)
 
 # Write the dataframe to the database
 dbWriteTable(con, "Mix_date_generation_price", Mix_date_generation_price)
