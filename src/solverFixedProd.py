@@ -1,5 +1,5 @@
 from pulp import *
-from default_values import *
+from src.default_values import *
 
 
 def solve_fixed_prod(
