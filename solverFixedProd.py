@@ -2,13 +2,11 @@ from pulp import *
 from default_values import *
 
 
-def solve_fixed_prod_storage_capa(
+def solve_fixed_prod(
     wind_capa,
     wind_profile,
     solar_capa,
     solar_profile,
-    battery_capa,
-    tank_capa,
     demand,
     ebat=EBAT,
     fbat=FBAT,
@@ -19,6 +17,8 @@ def solve_fixed_prod_storage_capa(
     finalStock=None,
     finalCharge=None,
     price_grid = PRICE_GRID,
+    cost_bat = COST_BAT,
+    cost_tank = COST_TANK
 ):
     """
     Parameters ::
@@ -36,8 +36,10 @@ def solve_fixed_prod_storage_capa(
     - initCharge : Initial charge of the battery (MWh)
     - initStock : Initial stock of the tank (Kg)
     - finalStock : Final stock of the tank (Kg), if None, the final stock is not constrained
-    - finalCharge : Final charge of the battery (MWh), if None, the final charge is not constrained \n
+    - finalCharge : Final charge of the battery (MWh), if None, the final charge is not constrained
     - price_grid : Price of the grid (€ / MWh), high to avoid using the grid / curtailing
+    - cost_bat : Cost of the battery (€ / MWh)
+    - cost_tank : Cost of the tank (€ / Kg) \n
     Returns a dictionnary with following keys ::
     - charge : Battery charge (MWh)
     - prod : Production of hydrogen (Kg)
@@ -46,6 +48,8 @@ def solve_fixed_prod_storage_capa(
     - consPPA : Consumption of PPA energy (MWh)
     - flowBat : Flow of energy to / from the battery ( > 0 if charging, < 0 if discharging) (MWh)
     - flowH2 : Flow of hydrogen to / from the tank ( > 0 if charging, < 0 if discharging) (Kg)
+    - operating_cost : Operating cost (€)
+    - storage_cost : Construction cost (€) # In this version, could be computed before optimization
     """
     # Create the model
     problem = LpProblem("Production_Problem", LpMinimize)
@@ -70,11 +74,16 @@ def solve_fixed_prod_storage_capa(
         "consPPA", indices, 0, None
     )  # Consumption of PPA energy (MWh)
     flowBat = LpVariable.dicts(
-        "flowBat", indices, 0, None
+        "flowBat", indices, None, None
     )  # Flow of energy to / from the battery ( > 0 if charging, < 0 if discharging) (MWh)
     flowH2 = LpVariable.dicts(
-        "flowH2", indices, 0, None
+        "flowH2", indices, None, None
     )  # Flow of hydrogen to / from the tank ( > 0 if charging, < 0 if discharging) (Kg)
+    operating_cost = LpVariable("operating_cost", 0, None)  # Operating cost (€)
+    # Capacities for the storage
+    battery_capa = LpVariable("battery_capa", 0, None)  # Battery capacity (MWh)
+    tank_capa = LpVariable("tank_capa", 0, None)  # Tank capacity (Kg)
+    storage_cost = LpVariable("storage_cost", 0, None)  # Construction cost (€)
     # Convert the per month discharge loss to per hour
     ebatPerHour = ebat ** (1 / (30 * 24))
     # Initial state
@@ -111,30 +120,27 @@ def solve_fixed_prod_storage_capa(
     if finalCharge is not None:
         problem += charge[T] == finalCharge
 
+    # Cost functions
+    problem += storage_cost == battery_capa * cost_bat + tank_capa * cost_tank
+    problem += operating_cost == sum(elecGrid[t] * price_grid + curtail[t] * price_grid for t in indices)
     # Objective function
-    problem += sum(elecGrid[t] * price_grid + curtail[t] * price_grid for t in indices)
+    problem += operating_cost + storage_cost
 
     # Solve the problem
-    problem.solve(GUROBI_CMD())
+    problem.solve()
 
     # Return the results
 
-    charge_out = [charge[t].varValue for t in indicesExt]
-    prod_out = [prod[t].varValue for t in indices]
-    stock_out = [stock[t].varValue for t in indicesExt]
-    elecGrid_out = [elecGrid[t].varValue for t in indices]
-    curtail_out = [curtail[t].varValue for t in indices]
-    consPPA_out = [consPPA[t].varValue for t in indices]
-    flowBat_out = [flowBat[t].varValue for t in indices]
-    flowH2_out = [flowH2[t].varValue for t in indices]
-
     return {
-        "charge": charge_out,
-        "prod": prod_out,
-        "stock": stock_out,
-        "elecGrid": elecGrid_out,
-        "curtail": curtail_out,
-        "consPPA": consPPA_out,
-        "flowBat": flowBat_out,
-        "flowH2": flowH2_out,
+        "charge":  [charge[t].varValue for t in indicesExt],
+        "prod": [prod[t].varValue for t in indices],
+        "stock":  [charge[t].varValue for t in indicesExt],
+        "elecGrid":  [elecGrid[t].varValue for t in indicesExt],
+        "curtail": [curtail[t].varValue for t in indices],
+        "consPPA":  [consPPA[t].varValue for t in indicesExt],
+        "flowBat": [flowBat[t].varValue for t in indices],
+        "flowH2": [flowH2[t].varValue for t in indices],
+        "operating_cost": value(operating_cost),
+        "storage_cost": value(storage_cost),
     }
+
