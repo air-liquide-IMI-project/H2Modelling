@@ -14,3 +14,4 @@ CTANK = 500 # Kg
 COST_TANK = 407 # € / Kg
 # Grid parameters
 PRICE_GRID = 1000 # € / MWh
+PRICE_CURTAILING = 1000 # € / MWh

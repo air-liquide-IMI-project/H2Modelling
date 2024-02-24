@@ -11,6 +11,9 @@ include("default_values.jl")
 - battery_capa : Capacity of the battery (MWh)
 - tank_capa : Capacity of the tank (Kg)
 - demand : Demand of hydrogen (Kg)
+- price_grid : Price of the grid (€ / MWh)
+- price_curtailing : Price of the curtailed energy (€ / MWh)
+- prodChangePenality : Penality for changing the production (€ / times the production changes)
 - initCharge : Initial charge of the battery (MWh)
 - initStock : Initial stock of the tank (Kg)
 - finalStock : Final stock of the tank (Kg), if None, the final stock is not constrained
@@ -34,6 +37,9 @@ function solveFixedProdStorage(
     batteryCapa :: Float64,
     tankCapa :: Float64,
     demand :: Float64,
+    price_grid = PRICE_GRID,
+    price_curtailing = PRICE_CURTAILING,
+    price_penality = 0.,
     initCharge =  0.,
     initStock = 0.,
     finalCharge = missing,
@@ -58,6 +64,8 @@ function solveFixedProdStorage(
     # Flow of elecricity / hydrogen
     flowBat = @variable(model, [1:T])
     flowH2 = @variable(model, [1:T])
+    # Production changing penality
+    prodHasChanged = @variable(model, [2:T], Bin)
     # Costs pseudo-variables
     operating_cost = @variable(model)
 
@@ -90,8 +98,15 @@ function solveFixedProdStorage(
     # Maximum charge & stock
     @constraint(model, [t ∈ 1:T+1], charge[t] <= batteryCapa)
     @constraint(model, [t ∈ 1:T+1], stock[t] <= tankCapa)
+    # Boolean variable for production change
+    @constraint(model, [t ∈ 2:T], prod[t] - prod[t-1] <= 2 * CELEC * prodHasChanged[t] / EELEC)
+    @constraint(model, [t ∈ 2:T], prod[t-1] - prod[t] <= 2 * CELEC * prodHasChanged[t] / EELEC)
     # Operating cost
-    @constraint(model, operating_cost == sum(elecGrid .* PRICE_GRID) + sum(curtailing .* PRICE_GRID))
+    @constraint(model, operating_cost == 
+    sum(elecGrid) * price_grid
+     + sum(curtailing) * price_curtailing 
+     + sum(prodHasChanged) * price_penality
+    )
     # Storage cost
     storage_cost = COST_BAT * batteryCapa + COST_TANK * tankCapa
     # Objective
