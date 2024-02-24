@@ -10,10 +10,17 @@ include("default_values.jl")
 - solar_profile : Solar profile (% of the capacity)
 - battery_capa : Capacity of the battery (MWh)
 - tank_capa : Capacity of the tank (Kg)
+- elec_capa : Capacity of the electrolyzer (MW)
 - demand : Demand of hydrogen (Kg)
 - price_grid : Price of the grid (€ / MWh)
 - price_curtailing : Price of the curtailed energy (€ / MWh)
 - prodChangePenality : Penality for changing the production (€ / times the production changes)
+- ebat : Efficiency of the battery, discharge per month
+- fbat : Maximum flow of the battery (MW)
+- eelec : Efficiency of the electrolyzer (MWh / Kg)
+- cost_elec : Cost of the electrolyzer (€ / MW)
+- cost_bat : Cost of the battery (€ / MWh)
+- cost_tank : Cost of the tank (€ / Kg)
 - initCharge : Initial charge of the battery (MWh)
 - initStock : Initial stock of the tank (Kg)
 - finalStock : Final stock of the tank (Kg), if None, the final stock is not constrained
@@ -36,14 +43,21 @@ function solveFixedProdStorage(
     solarProfile :: Array{Float64, 1},
     batteryCapa :: Float64,
     tankCapa :: Float64,
+    elecCapa :: Float64,
     demand :: Float64,
     price_grid = PRICE_GRID,
     price_curtailing = PRICE_CURTAILING,
-    price_penality = 0.,
+    price_penality = PRICE_PENALITY,
+    ebat = EBAT,
+    fbat = FBAT,
+    eelec = EELEC,
+    cost_elec = COST_ELEC,
+    cost_bat = COST_BAT,
+    cost_tank = COST_TANK,
     initCharge =  0.,
     initStock = 0.,
     finalCharge = missing,
-    finalStock = missing,
+    finalStock = missing
 )
     # Number of time steps
     T = length(windProfile)
@@ -80,27 +94,27 @@ function solveFixedProdStorage(
         @constraint(model, stock[T+1] == finalStock)
     end
     # Get the per hour discharge of the batteryn from the per month parameter
-    perHourDischarge = EBAT ^ (1 / (30 * 24))
+    perHourDischarge = ebat ^ (1 / (30 * 24))
     # PPA contract
     @constraint(model, [t ∈ 1:T], elecPPA[t] == windProfile[t] * windCapa + solarProfile[t] * solarCapa)
     # Demand satisfaction
     @constraint(model, [t ∈ 1:T], prod[t] == flowH2[t] + demand)
     # Electricity consumption
-    @constraint(model, [t ∈ 1:T], elecGrid[t] + elecPPA[t] - curtailing[t] == prod[t] * EELEC + flowBat[t])
+    @constraint(model, [t ∈ 1:T], elecGrid[t] + elecPPA[t] - curtailing[t] == prod[t] * eelec + flowBat[t])
     # Battery charge
     @constraint(model, [t ∈ 1:T], charge[t+1] == perHourDischarge * charge[t] + flowBat[t])
     # Tank stock
     @constraint(model, [t ∈ 1:T], stock[t+1] == 1 * stock[t] + flowH2[t])
     # Flow of electricity / hydrogen
-    @constraint(model, [t ∈ 1:T], -FBAT <= flowBat[t] <= FBAT)
+    @constraint(model, [t ∈ 1:T], -fbat <= flowBat[t] <= fbat)
     # Electrolyzer consumption
-    @constraint(model, [t ∈ 1:T], prod[t] * EELEC <= CELEC)
+    @constraint(model, [t ∈ 1:T], prod[t] * eelec <= elecCapa)
     # Maximum charge & stock
     @constraint(model, [t ∈ 1:T+1], charge[t] <= batteryCapa)
     @constraint(model, [t ∈ 1:T+1], stock[t] <= tankCapa)
     # Boolean variable for production change
-    @constraint(model, [t ∈ 2:T], prod[t] - prod[t-1] <= 2 * CELEC * prodHasChanged[t] / EELEC)
-    @constraint(model, [t ∈ 2:T], prod[t-1] - prod[t] <= 2 * CELEC * prodHasChanged[t] / EELEC)
+    @constraint(model, [t ∈ 2:T], prod[t] - prod[t-1] <= 2 * elecCapa * prodHasChanged[t] / eelec)
+    @constraint(model, [t ∈ 2:T], prod[t-1] - prod[t] <= 2 * elecCapa * prodHasChanged[t] / eelec)
     # Operating cost
     @constraint(model, operating_cost == 
     sum(elecGrid) * price_grid
@@ -108,7 +122,8 @@ function solveFixedProdStorage(
      + sum(prodHasChanged) * price_penality
     )
     # Storage cost
-    storage_cost = COST_BAT * batteryCapa + COST_TANK * tankCapa
+    storage_cost = cost_bat * batteryCapa + cost_tank * tankCapa
+    electrolyser_cost = cost_elec * elecCapa
     # Objective
     @objective(model, Min, operating_cost)
     optimize!(model)
@@ -124,5 +139,6 @@ function solveFixedProdStorage(
         "flowH2" => value.(flowH2),
         "operating_cost" => value(operating_cost),
         "storage_cost" => storage_cost,
+        "electrolyser_cost" => electrolyser_cost,
     )
 end

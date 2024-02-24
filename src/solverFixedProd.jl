@@ -16,6 +16,13 @@ include("default_values.jl")
 - initStock : Initial stock of the tank (Kg)
 - finalStock : Final stock of the tank (Kg), if None, the final stock is not constrained
 - finalCharge : Final charge of the battery (MWh), if None, the final charge is not constrained
+- ebat : Efficiency of the battery, discharge per month
+- fbat : Maximum flow of the battery (MW)
+- eelec : Efficiency of the electrolyzer (MWh / Kg)
+- cost_elec : Cost of the electrolyzer (€ / MW)
+- cost_bat : Cost of the battery (€ / MWh)
+- cost_tank : Cost of the tank (€ / Kg)
+- capa_elec_upper : Upper bound for the electrolyzer capacity (MW)
 ## Returns a dictionnary with following keys
 - battery_capa : Capacity of the battery (MWh)
 - tank_capa : Capacity of the tank (Kg)
@@ -42,6 +49,13 @@ function solveFixedProd(
     initStock = 0.,
     finalCharge = missing,
     finalStock = missing,
+    ebat = EBAT,
+    fbat = FBAT,
+    eelec = EELEC,
+    cost_elec = COST_ELEC,
+    cost_bat = COST_BAT,
+    cost_tank = COST_TANK,
+    capa_elec_upper = CELEC, # Upper bound for the electrolyzer capacity
 )
     # Number of time steps
     T = length(windProfile)
@@ -54,6 +68,8 @@ function solveFixedProd(
     # Storage variables
     batteryCapa = @variable(model, lower_bound = 0.)
     tankCapa = @variable(model, lower_bound = 0.)
+    # Electrolyser capacity
+    electroCapa = @variable(model, lower_bound = 0., upper_bound = capa_elec_upper)
     # Main variables
     charge = @variable(model, [1:T+1], lower_bound = 0.)
     stock = @variable(model, [1:T+1], lower_bound = 0.)
@@ -70,6 +86,7 @@ function solveFixedProd(
     # Costs pseudo-variables
     operating_cost = @variable(model)
     storage_cost = @variable(model)
+    electrolyser_cost = @variable(model)
 
     # Initial charge & stock
     @constraint(model, charge[1] == initCharge)
@@ -82,7 +99,7 @@ function solveFixedProd(
         @constraint(model, stock[T+1] == finalStock)
     end
     # Get the per hour discharge of the batteryn from the per month parameter
-    perHourDischarge = EBAT ^ (1 / (30 * 24))
+    perHourDischarge = ebat ^ (1 / (30 * 24))
     # PPA contract
     @constraint(model, [t ∈ 1:T], elecPPA[t] == windProfile[t] * windCapa + solarProfile[t] * solarCapa)
     # Demand satisfaction
@@ -94,15 +111,15 @@ function solveFixedProd(
     # Tank stock
     @constraint(model, [t ∈ 1:T], stock[t+1] == 1 * stock[t] + flowH2[t])
     # Flow of electricity / hydrogen
-    @constraint(model, [t ∈ 1:T], -FBAT <= flowBat[t] <= FBAT)
+    @constraint(model, [t ∈ 1:T], -fbat <= flowBat[t] <= fbat)
     # Electrolyzer consumption
-    @constraint(model, [t ∈ 1:T], prod[t] * EELEC <= CELEC)
+    @constraint(model, [t ∈ 1:T], prod[t] * eelec <= electroCapa)
     # Maximum charge & stock
     @constraint(model, [t ∈ 1:T+1], charge[t] <= batteryCapa)
     @constraint(model, [t ∈ 1:T+1], stock[t] <= tankCapa)
     # Boolean variable for production change
-    @constraint(model, [t ∈ 2:T], prod[t] - prod[t-1] <= 2 * CELEC * prodHasChanged[t] / EELEC)
-    @constraint(model, [t ∈ 2:T], prod[t-1] - prod[t] <= 2 * CELEC * prodHasChanged[t] / EELEC)
+    @constraint(model, [t ∈ 2:T], prod[t] - prod[t-1] <= 2 * capa_elec_upper * prodHasChanged[t] / eelec)
+    @constraint(model, [t ∈ 2:T], prod[t-1] - prod[t] <= 2 * capa_elec_upper * prodHasChanged[t] / eelec)
     # Operating cost
     @constraint(model, operating_cost == 
     sum(elecGrid) * price_grid
@@ -110,14 +127,17 @@ function solveFixedProd(
      + sum(prodHasChanged) * price_penality
     )
     # Storage cost
-    @constraint(model, storage_cost == COST_BAT * batteryCapa + COST_TANK * tankCapa)
+    @constraint(model, storage_cost == cost_bat * batteryCapa + cost_tank * tankCapa)
+    # Electrolyser cost
+    @constraint(model, electrolyser_cost == cost_elec * electroCapa)
     # Objective
-    @objective(model, Min, operating_cost + storage_cost)
+    @objective(model, Min, operating_cost + storage_cost + electrolyser_cost)
     optimize!(model)
 
     return Dict(
         "battery_capa" => value.(batteryCapa),
         "tank_capa" => value.(tankCapa),
+        "electro_capa" => value.(electroCapa),
         "charge" => value.(charge),
         "prod" => value.(prod),
         "stock" => value.(stock),
@@ -128,5 +148,6 @@ function solveFixedProd(
         "flowH2" => value.(flowH2),
         "operating_cost" => value(operating_cost),
         "storage_cost" => value(storage_cost),
+        "electrolyser_cost" => value(electrolyser_cost),
     )
 end
