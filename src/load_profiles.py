@@ -9,12 +9,12 @@ def load_profiles(filename, profile_names = []):
     timeColumn = "utc_timestamp"
     time = pd.to_datetime(data[timeColumn], format='%Y-%m-%dT%H:%M:%SZ', utc=True)
     data.set_index(time, inplace=True)
-    # Remove the NA values
-    data = data.interpolate(method='time')
     # Drop the columns that are not needed
     for column in data.columns:
         if column not in profile_names:
             data = data.drop(column, axis=1)
+    # Remove the NA values
+    data = data.interpolate(method='time')
     # Return the data
     return data
 
