@@ -5,6 +5,7 @@ EBAT = 0.9
 CBAT = 400 # MWh
 FBAT = 100 # MW
 COST_BAT = 250000 * 0.0002 # € / MWh
+CAPA_BAT_UPPER = 40000 # MWh, 10 GWh
 # Electrolyzer parameters
 EELEC = 0.050 # Mwh / Kg
 CELEC = 1000 # MW

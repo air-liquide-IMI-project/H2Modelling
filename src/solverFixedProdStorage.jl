@@ -66,7 +66,7 @@ function solveFixedProdStorage(
     end
 
     # Create the model
-    model = Model(HiGHS.Optimizer)
+    model = Model(Gurobi.Optimizer)
     # Main variables
     charge = @variable(model, [1:T+1], lower_bound = 0.)
     stock = @variable(model, [1:T+1], lower_bound = 0.)

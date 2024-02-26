@@ -45,17 +45,18 @@ function solveFixedProd(
     price_grid = PRICE_GRID,
     price_curtailing = PRICE_CURTAILING,
     price_penality = 0.,
-    initCharge =  0.,
-    initStock = 0.,
-    finalCharge = missing,
-    finalStock = missing,
+    capa_elec_upper = CELEC, # Upper bound for the electrolyzer capacity
+    capa_bat_upper = CAPA_BAT_UPPER, # Upper bound for the battery capacity
     ebat = EBAT,
     fbat = FBAT,
     eelec = EELEC,
     cost_elec = COST_ELEC,
     cost_bat = COST_BAT,
     cost_tank = COST_TANK,
-    capa_elec_upper = CELEC, # Upper bound for the electrolyzer capacity
+    initCharge =  0.,
+    initStock = 0.,
+    finalCharge = missing,
+    finalStock = missing,
 )
     # Number of time steps
     T = length(windProfile)
@@ -64,9 +65,9 @@ function solveFixedProd(
     end
 
     # Create the model
-    model = Model(HiGHS.Optimizer)
+    model = Model(Gurobi.Optimizer)
     # Storage variables
-    batteryCapa = @variable(model, lower_bound = 0.)
+    batteryCapa = @variable(model, lower_bound = 0., upper_bound = capa_bat_upper)
     tankCapa = @variable(model, lower_bound = 0.)
     # Electrolyser capacity
     electroCapa = @variable(model, lower_bound = 0., upper_bound = capa_elec_upper)
