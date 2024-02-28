@@ -21,6 +21,8 @@ include("default_values.jl")
 - cost_elec : Cost of the electrolyzer (€ / MW)
 - cost_bat : Cost of the battery (€ / MWh)
 - cost_tank : Cost of the tank (€ / Kg)
+- cost_wind : Cost of installing a wind turbine (€ / MW)
+- cost_solar : Cost of installing a solar panel (€ / MW)
 - initCharge : Initial charge of the battery (MWh)
 - initStock : Initial stock of the tank (Kg)
 - finalStock : Final stock of the tank (Kg), if None, the final stock is not constrained
@@ -54,6 +56,8 @@ function solveFixedProdStorage(
     cost_elec = COST_ELEC,
     cost_bat = COST_BAT,
     cost_tank = COST_TANK,
+    cost_wind = PRICE_WIND,
+    cost_solar = PRICE_SOLAR,
     initCharge =  0.,
     initStock = 0.,
     finalCharge = missing,
@@ -123,7 +127,10 @@ function solveFixedProdStorage(
     )
     # Storage cost
     storage_cost = cost_bat * batteryCapa + cost_tank * tankCapa
+    # Electrolyser cost
     electrolyser_cost = cost_elec * elecCapa
+    # Energy generation cost
+    electricity_plant_cost = windCapa * cost_wind + solarCapa * cost_solar
     # Objective
     @objective(model, Min, operating_cost)
     optimize!(model)
@@ -140,5 +147,6 @@ function solveFixedProdStorage(
         "operating_cost" => value(operating_cost),
         "storage_cost" => storage_cost,
         "electrolyser_cost" => electrolyser_cost,
+        "electricity_plant_cost" => electricity_plant_cost
     )
 end

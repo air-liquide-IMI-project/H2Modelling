@@ -17,3 +17,6 @@ COST_TANK = 407 # € / Kg
 PRICE_GRID = 1000 # € / MWh
 PRICE_CURTAILING = 1000 # € / MWh
 PRICE_PENALITY = 0 # € / Times changed
+# Renewable pricing, from https://atb.nrel.gov/electricity/2022/index
+PRICE_WIND = 1352 * 1000 # € / MW
+PRICE_SOLAR = 1233 * 1000 # € / MW

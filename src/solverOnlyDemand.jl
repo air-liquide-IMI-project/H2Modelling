@@ -4,8 +4,6 @@ include("default_values.jl")
 
 """
 ## Arguments
-- wind_capa : Capacity of the wind farm (MW)
-- wind_profile : Wind profile (% of the capacity)
 - solar_capa : Capacity of the solar farm (MW)
 - solar_profile : Solar profile (% of the capacity)
 - demand : Demand of hydrogen (Kg)
@@ -27,6 +25,8 @@ include("default_values.jl")
 - finalStock : Final stock of the tank (Kg), if None, the final stock is not constrained
 - finalCharge : Final charge of the battery (MWh), if None, the final charge is not constrained
 ## Returns a dictionnary with following keys
+- wind_capa : Capacity of the wind farm (MW)
+- solar_capa : Capacity of the solar farm (MW)
 - battery_capa : Capacity of the battery (MWh)
 - tank_capa : Capacity of the tank (Kg)
 - electro_capa : Capacity of the electrolyzer (MW)
@@ -38,12 +38,11 @@ include("default_values.jl")
 - flowBat : Flow of energy to / from the battery ( > 0 if charging, < 0 if discharging) (MWh)
 - flowH2 : Flow of hydrogen to / from the tank ( > 0 if charging, < 0 if discharging) (Kg)
 - operating_cost : Operating cost (€)
-- storage_cost : Construction cost of the storage (€)
+- storage_cost : Construction cost (€)
 - electrolyser_cost : Construction cost of the electrolyzer (€)
+- electricity_plant_cost : Construction cost of the electricity plant (€)
 """
-function solveFixedProd(
-    windCapa :: Float64,
-    solarCapa :: Float64,
+function solveOnlyDemand(
     windProfile :: Array{Float64, 1},
     solarProfile :: Array{Float64, 1},
     demand :: Float64,
@@ -73,6 +72,9 @@ function solveFixedProd(
 
     # Create the model
     model = Model(Gurobi.Optimizer)
+    # Electricity production capacities
+    windCapa = @variable(model, lower_bound = 0.)
+    solarCapa = @variable(model, lower_bound = 0.)
     # Storage variables
     batteryCapa = @variable(model, lower_bound = 0., upper_bound = capa_bat_upper)
     tankCapa = @variable(model, lower_bound = 0.)
@@ -95,6 +97,7 @@ function solveFixedProd(
     operating_cost = @variable(model)
     storage_cost = @variable(model)
     electrolyser_cost = @variable(model)
+    electricity_plant_cost = @variable(model)
 
     # Initial charge & stock
     @constraint(model, charge[1] == initCharge)
@@ -139,12 +142,14 @@ function solveFixedProd(
     # Electrolyser cost
     @constraint(model, electrolyser_cost == cost_elec * electroCapa)
     # Electricity production cost
-    electricity_plant_cost = windCapa * cost_wind + solarCapa * cost_solar
+    @constraint(model, electricity_plant_cost == windCapa * cost_wind + solarCapa * cost_solar)
     # Objective
-    @objective(model, Min, operating_cost + storage_cost + electrolyser_cost)
+    @objective(model, Min, operating_cost + storage_cost + electrolyser_cost + electricity_plant_cost)
     optimize!(model)
 
     return Dict(
+        "wind_capa" => value.(windCapa),
+        "solar_capa" => value.(solarCapa),
         "battery_capa" => value.(batteryCapa),
         "tank_capa" => value.(tankCapa),
         "electro_capa" => value.(electroCapa),
@@ -159,6 +164,6 @@ function solveFixedProd(
         "operating_cost" => value(operating_cost),
         "storage_cost" => value(storage_cost),
         "electrolyser_cost" => value(electrolyser_cost),
-        "electricity_plant_cost" => electricity_plant_cost
+        "electricity_plant_cost" => value(electricity_plant_cost)
     )
 end
