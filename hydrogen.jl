@@ -44,16 +44,19 @@ FRF
 Best_cost = Vector{Float64}()
 Best_cost_plot_trimester = Vector{Any}()
 
-number_day = 28
+number_day = 7
+
+
 # D = [1000 for i in 1:24]
 # Variance = 400
 # Demand_min = 0
 # Demand_max = 3000
 
 # D = [floor(Int, rand(Truncated(Normal(1000, Variance), Demand_min, Demand_max))) for i in 1:(24*number_day)]
-D = [1000 for i in 1:(24*number_day)]
-Length_D = length(D)
-PPA = FRF[1:Length_D]
+
+Demand = [1000 for i in 1:(24*number_day)]
+Length_Demand = length(Demand)
+PPA = FRF[1:Length_Demand]
 
 
 # Cost_market = [20.79, 17.41, 16.24, 11.9, 9.77, 15.88, 24.88, 29.7, 35.01, 33.95, 29.9, 29.03]
@@ -104,7 +107,7 @@ plot_array_hydrogen_storage = Any[]
 index_hyd_stock_level = Any[]
 Hydrogen_stored_tank_opt = Any[]
 
-Length_D = length(D)
+Length_Demand = length(Demand)
 Nb_month = 40
 
 hyd_stock_level_test = [floor(Int, rand(Truncated(Normal(200, Variance_2), hyd_stock_min, hyd_stock_max))) for i in 1:Nb_month]
@@ -112,7 +115,7 @@ hyd_stock_level_test = [floor(Int, rand(Truncated(Normal(200, Variance_2), hyd_s
 for test in 1:Nb_month
 
     if (test%4 == 0)
-        D = [floor(Int, rand(Truncated(Normal(1000, Variance), Demand_min, Demand_max))) for i in 1:(24*number_day)]
+        Demand = [floor(Int, rand(Truncated(Normal(1000, Variance), Demand_min, Demand_max))) for i in 1:(24*number_day)]
     end
     # hyd_stock_level = [floor(Int, rand(Truncated(Normal(200, Variance_2), hyd_stock_min, hyd_stock_max))) for i in 1:Length_hyd_stock_level]
     # index_hyd_stock_level = sort(random_generate_index(number_hour))
@@ -123,19 +126,19 @@ for test in 1:Nb_month
     model = Model(HiGHS.Optimizer) # this part allows to generate our initial solution
     set_attribute(model, "time_limit", 360.0) # we may need to have a longer time to run
 
-    @variable(model,0<= Ener_PPA[1:Length_D], Int)
-    @variable(model,0<= Ener_Market[1:Length_D], Int)
-    @variable(model, 0<=Ener_Bat_flux[1:Length_D], Int)
-    @variable(model, 0<= Ener_used_by_elec[1:Length_D], Int)
-    @variable(model, 0<= Ener_stored_bat[1:Length_D+1], Int)
-    @variable(model, 0<= Hydrogen_stored_tank[1:Length_D+1], Int)
+    @variable(model,0<= Ener_PPA[1:Length_Demand], Int)
+    @variable(model,0<= Ener_Market[1:Length_Demand], Int)
+    @variable(model, 0<=Ener_Bat_flux[1:Length_Demand], Int)
+    @variable(model, 0<= Ener_used_by_elec[1:Length_Demand], Int)
+    @variable(model, 0<= Ener_stored_bat[1:Length_Demand+1], Int)
+    @variable(model, 0<= Hydrogen_stored_tank[1:Length_Demand+1], Int)
 
     @constraint(model, Ener_stored_bat[1] == Ener_stored_bat_initial)
     @constraint(model, Hydrogen_stored_tank[1] == Hydrogen_stored_tank_initial)
 
-    for i in 1:Length_D
-        @constraint(model, D[i] <= Ener_used_by_elec[i]/efficiency_elec+ Hydrogen_stored_tank[i])
-        @constraint(model, Hydrogen_stored_tank[i+1] == Ener_used_by_elec[i]/efficiency_elec - D[i])
+    for i in 1:Length_Demand
+        @constraint(model, Demand[i] <= Ener_used_by_elec[i]/efficiency_elec+ Hydrogen_stored_tank[i])
+        @constraint(model, Hydrogen_stored_tank[i+1] == Ener_used_by_elec[i]/efficiency_elec - Demand[i])
         @constraint(model, Hydrogen_stored_tank[i+1] <= Cap_max_tank_stock)
         @constraint(model, Ener_PPA[i] <= PPA[i])
         @constraint(model, Ener_Bat_flux[i] <= Ener_stored_bat[i])
@@ -151,9 +154,9 @@ for test in 1:Nb_month
     end
 
     function Cost(Ener_PPA, Ener_Market, Ener_used_by_elec, Ener_stored_bat, Hydrogen_stored_tank)
-        Cost_energy =  [CostPPA*Ener_PPA[i] + Cost_market[i]*Ener_Market[i] + capex_elec*Ener_used_by_elec[i] for i in 1:Length_D]
-        Cost_storage = [capex_battery*Ener_stored_bat[i] + capex_gas_tank*Hydrogen_stored_tank[i] for i in 1:Length_D]
-        objective_function = sum(Cost_energy[i] + Cost_storage[i]  for i in 1:Length_D)
+        Cost_energy =  [CostPPA*Ener_PPA[i] + Cost_market[i]*Ener_Market[i] + capex_elec*Ener_used_by_elec[i] for i in 1:Length_Demand]
+        Cost_storage = [capex_battery*Ener_stored_bat[i] + capex_gas_tank*Hydrogen_stored_tank[i] for i in 1:Length_Demand]
+        objective_function = sum(Cost_energy[i] + Cost_storage[i]  for i in 1:Length_Demand)
         return objective_function
     end
 
@@ -169,12 +172,12 @@ for test in 1:Nb_month
     Hydrogen_stored_tank_opt = JuMP.value.(Hydrogen_stored_tank)
 
 
-    x = [24*i for i in 1:trunc(Int,Length_D/24)]
-    y1 = [Ener_PPA_opt[24*i] for i in 1:trunc(Int,Length_D/24)]
-    y2 = [Ener_Market_opt[24*i] for i in 1:trunc(Int,Length_D/24)]
-    y3 = [Ener_stored_bat_opt[24*i] for i in 1:trunc(Int,Length_D/24)]
+    x = [24*i for i in 1:trunc(Int,Length_Demand/24)]
+    y1 = [Ener_PPA_opt[24*i] for i in 1:trunc(Int,Length_Demand/24)]
+    y2 = [Ener_Market_opt[24*i] for i in 1:trunc(Int,Length_Demand/24)]
+    y3 = [Ener_stored_bat_opt[24*i] for i in 1:trunc(Int,Length_Demand/24)]
 
-    h1 = [Hydrogen_stored_tank_opt[i] for i in 1:Length_D]
+    h1 = [Hydrogen_stored_tank_opt[i] for i in 1:Length_Demand]
 
 
     plot(x, y1, label="Energy from PPA", xlabel="Hours", ylabel="Value in MW")
@@ -187,7 +190,7 @@ for test in 1:Nb_month
     push!(plot_array_hydrogen_storage, plot_hyd_storage)
 end
 
-# x = [Nb_test*i for i in 1:trunc(Int,Length_D/Nb_test)]
+# x = [Nb_test*i for i in 1:trunc(Int,Length_Demand/Nb_test)]
 x = [i for i in 1:Nb_month]
 
 plot(x, hyd_stock_level_test, label ="hydrogen_sotck_level_test", ylabel = "H2 level in Kg", color=:red)
