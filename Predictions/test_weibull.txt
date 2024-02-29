@@ -1,0 +1,3 @@
+DE_wind_generation_actual : Test de Kolmogorov-Smirnov : Statistique = 0.023801399308112092 , p-valeur = 3.099059596562576e-25
+DE_wind_generation_actual (1 semaine) : Test de Kolmogorov-Smirnov : Statistique = 0.02361669243840575 , p-valeur = 9.040520852307396e-25
+DE_wind_generation_actual (log) : Test de Kolmogorov-Smirnov : Statistique = 0.017848228331487026 , p-valeur = 2.235653711346938e-14
