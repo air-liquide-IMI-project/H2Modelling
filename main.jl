@@ -8,9 +8,9 @@
 #       format_version: '1.5'
 #       jupytext_version: 1.15.2
 #   kernelspec:
-#     display_name: Julia 1.9.4
+#     display_name: Julia 1.10.1
 #     language: julia
-#     name: julia-1.9
+#     name: julia-1.10
 # ---
 
 # ## Zeroth Step
@@ -47,13 +47,13 @@ COST_TANK = 407. # € / Kg
 # Grid parameters
 PRICE_GRID = 1000. # € / MWh
 PRICE_CURTAILING = 1000. # € / MWh;
-PRICE_PENALITY = 10. # € / times changed
+PRICE_PENALITY = 10 # € / times changed
 # Renewable pricing, from https://atb.nrel.gov/electricity/2022/index
 # For now : 20 year lifespan, no discount rate + O&M cost per year
 COST_WIND = 1352 * 1000 / 20 + 43 * 1000 # € / MW
 COST_SOLAR = 1233 * 1000 / 20 + 23 * 1000 # € / MW
 # Upper bound on the battery capacity
-CAPA_BAT_UPPER = 40000 # MW
+CAPA_BAT_UPPER = 24 * DEMAND * EELEC # MW
 #Year chosen for the simulation
 YEAR = 2015;
 
@@ -113,7 +113,7 @@ function plot_solution(
     consPPA_out = output["elecPPA"];
     # Plot the production & tank charge over time
     prod = plot(size=(1200, 500), legend=:topleft, xlabel="Time (h)", ylabel="Production (Kg)",
-    title="Hydrogen, Demand : $D kg/h, Tank, Electrolyser: $(electro_capa / EELEC) kg/h")
+    title="Hydrogen, Demand : $D kg/h, Electrolyser: $(electro_capa / EELEC) kg/h")
     plot!(prod, prod_out, label="Production")
     # Plot the consumptions, curtailment and battery charge
     cons = plot(size=(1200, 500), legend=:topleft, xlabel="Time (h)", ylabel="Electricity consumption (Mwh)",

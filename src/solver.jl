@@ -14,7 +14,8 @@ include("default_values.jl")
 - demand : Demand of hydrogen (Kg)
 - price_grid : Price of the grid (€ / MWh)
 - price_curtailing : Price of the curtailed energy (€ / MWh)
-- prodChangePenality : Penality for changing the production (€ / times the production changes)
+- price_penality: Penality for changing the production (€ / times the production changes)
+- price_prod_change : Price for changing the production, per Kg of change (€ / Kg of change)
 - ebat : Efficiency of the battery, discharge per month
 - fbat : Maximum flow of the battery (MW)
 - eelec : Efficiency of the electrolyzer (MWh / Kg)
@@ -56,7 +57,8 @@ function solve(
     electroCapa = missing,
     price_grid = PRICE_GRID,
     price_curtailing = PRICE_CURTAILING,
-    price_penality = PRICE_PENALITY,
+    price_penality = PRICE_PENALITY, # Penality for changing the production
+    price_prod_change = PRICE_PROD_CHANGE, # Price for changing the production, per Kg of change.
     capa_bat_upper = CELEC, # Upper bound for the electrolyzer capacity
     capa_elec_upper = CAPA_BAT_UPPER, # Upper bound for the battery capacity
     ebat = EBAT,
@@ -76,6 +78,11 @@ function solve(
     T = length(windProfile)
     if length(solarProfile) != T
         throw(ArgumentError("The length of the solar profile should be equal to the length of the wind profile"))
+    end
+
+    # Only use one way to penalize production change
+    if price_penality > 0 && price_prod_change > 0
+        throw(ArgumentError("Only one way to penalize production change should be used"))
     end
 
     # Create the model
@@ -114,6 +121,10 @@ function solve(
     if price_penality > 0
         prodHasChanged = @variable(model, [2:T], Bin)
     end
+
+    if price_prod_change > 0
+        prodChange_cost = @variable(model, [2:T])
+    end
     # Costs pseudo-variables
     operating_cost = @variable(model)
     storage_cost = @variable(model)
@@ -145,6 +156,11 @@ function solve(
     @constraint(model, [t ∈ 1:T], stock[t+1] == 1 * stock[t] + flowH2[t])
     # Flow of electricity / hydrogen
     @constraint(model, [t ∈ 1:T], -fbat <= flowBat[t] <= fbat)
+    # # Can't fill in less than 10 hours
+    # @constraint(model, [t ∈ 1:T], flowBat[t] <= batteryCapa / 10)
+    # @constraint(model, [t ∈ 1:T], - flowBat[t] <= batteryCapa / 10)
+    # @constraint(model, [t ∈ 1:T], flowH2[t] <= tankCapa / 10)
+    # @constraint(model, [t ∈ 1:T], - flowH2[t] <= tankCapa / 10)
     # Electrolyzer consumption
     @constraint(model, [t ∈ 1:T], prod[t] * eelec <= electroCapa)
     # Maximum charge & stock
@@ -155,13 +171,23 @@ function solve(
         @constraint(model, [t ∈ 2:T], prod[t] - prod[t-1] <= 2 * capa_elec_upper * prodHasChanged[t] / eelec)
         @constraint(model, [t ∈ 2:T], prod[t-1] - prod[t] <= 2 * capa_elec_upper * prodHasChanged[t] / eelec)
     end
-    # Operating cost
+    # Production change cost if applicable
+    if price_prod_change > 0
+        @constraint(model, [t ∈ 2:T], price_prod_change * (prod[t] - prod[t-1]) <= prodChange_cost[t])
+        @constraint(model, [t ∈ 2:T], price_prod_change * (prod[t-1] - prod[t]) <= prodChange_cost[t])
+    end
     # Operating cost
     if price_penality > 0
         @constraint(model, operating_cost == 
         sum(elecGrid) * price_grid
         + sum(curtailing) * price_curtailing 
         + sum(prodHasChanged) * price_penality
+        )
+    elseif price_prod_change > 0
+        @constraint(model, operating_cost == 
+        sum(elecGrid) * price_grid
+        + sum(curtailing) * price_curtailing
+        + sum(prodChange_cost)
         )
     else
         @constraint(model, operating_cost == 
