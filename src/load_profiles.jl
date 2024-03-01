@@ -3,7 +3,7 @@ using DataFrames
 using Dates
 using Impute
 
-function load_profiles(filename, years = [2015, 2016, 2017], wind_profile = "DE_wind_profile", solar_profile = "DE_solar_profile")
+function load_profiles(filename, years = [2015, 2016, 2017], verbose = false, wind_profile = "DE_wind_profile", solar_profile = "DE_solar_profile")
     # Load the file
     data = CSV.read(filename, DataFrame)
     # Time column
@@ -19,6 +19,9 @@ function load_profiles(filename, years = [2015, 2016, 2017], wind_profile = "DE_
     solarProfiles = Dict()
     timeIndexes = Dict()
     for year in years
+        if verbose
+            println("Loading the profiles for the year $year")
+        end
         subData = filter(row -> year == Dates.year(row.utc_timestamp), data)
         disallowmissing!(subData)
         windProfiles[year] = subData[!, wind_profile]
