@@ -154,8 +154,9 @@ for group in 1:Nb_groups
 
         function Cost(Ener_PPA, Ener_Market, Ener_used_by_elec, Ener_stored_bat, Hydrogen_stored_tank)
             Cost_energy =  [CostPPA*Ener_PPA[i] + Cost_market[i]*Ener_Market[i] + capex_elec*Ener_used_by_elec[i] for i in 1:Length_Demand]
-            Cost_storage = [capex_battery*Ener_stored_bat[i] + capex_gas_tank*Hydrogen_stored_tank[i] for i in 1:Length_Demand + 1] # here we consider that we pay for the initial sotck of the following week
-            objective_function = sum(Cost_energy[i] + Cost_storage[i + 1]  for i in 1:Length_Demand)                                    #but not for the initial storage of the very first hour of the week
+            #Cost_storage = [capex_battery*Ener_stored_bat[i] + capex_gas_tank*Hydrogen_stored_tank[i] for i in 1:Length_Demand + 1] # here we consider that we pay for the initial sotck of the following week
+            # objective_function = sum(Cost_energy[i] + Cost_storage[i + 1]  for i in 1:Length_Demand)                                    #but not for the initial storage of the very first hour of the week
+            objective_function = sum(Cost_energy[i] for i in 1:Length_Demand)   #here we consider we do not have any OPEX, so the CAPEX are not taken into ccount
             return objective_function
         end
 
@@ -199,70 +200,6 @@ df = DataFrame(Optimal_cost_hyd_storage, Symbol.(week_names))
 
 CSV.write("Optimal_cost_hyd_storage.csv", df)
 
-# plot(x, hyd_stock_level_test, label ="hydrogen_sotck_level_test", ylabel = "H2 level in Kg", color=:red)
-
-# Best_cost_plot = plot!(twinx(), x, Best_cost, label ="Best_cost", xlabel = "month", ylabel = "cost in euro")
-
-
-# savefig(Best_cost_plot, "plots/best_cost_plot.png")
 
 
 
-# for (i, p) in enumerate(plot_array_energy)
-#     savefig(p, "plots/plot_energy$i.png")  # Save each plot as a separate PNG file
-# end
-
-
-# for (i, p) in enumerate(plot_array_hydrogen_storage)
-#     savefig(p, "plots/plot_hydrogen_storage$i.png")  # Save each plot as a separate PNG file
-# end
-
-# G = Vector{Any}()
-
-# JU = [5,6,3,4,5,7,8]
-# JU[2:5]
-
-
-# # Best_cost = Vector{Float64}()
-# Best_cost_plot_tot = Vector{Any}()
-# x = [i for i in 1:Nb_month]
-# for i in 1:10
-#     plot(x[1 + (i-1)*4: 4*i], hyd_stock_level_test[1 + (i-1)*4: 4*i], label ="hydrogen_sotck_level_test", ylabel = "H2 level in Kg", color=:red, legend=false, yguidefontcolor=:red, size=(2000, 2000))
-#     Best_cost_plot_trimester = plot!(twinx(), x[1 + (i-1)*4: 4*i], Best_cost[1 + (i-1)*4: 4*i], label ="Best_cost", xlabel = "month", ylabel = "cost in euro", legend=false, yguidefontcolor=:blue, size=(2000, 2000))
-#     push!(Best_cost_plot_tot,Best_cost_plot_trimester)
-# end
-
-
-
-
-# H = [
-#     Best_cost_plot_tot[1] Best_cost_plot_tot[2] 
-#     Best_cost_plot_tot[3] Best_cost_plot_tot[4] 
-#     Best_cost_plot_tot[5] Best_cost_plot_tot[6] 
-#     Best_cost_plot_tot[7] Best_cost_plot_tot[8]
-#     Best_cost_plot_tot[9] Plot_energy_vector[1] 
-# ]
-
-# Plot_energy_vector = Vector{Any}()
-# for i in 1:40
-#     push!(Plot_energy_vector,plot_array_energy[i] )
-# end
-# Best_cost_plot_tot[1]
-# Plot_energy_vector[ 4]
-
-# P = [
-#     Plot_energy_vector[1 +(1-1)*4] Plot_energy_vector[2 +(1-1)*4] 
-#     Plot_energy_vector[3 +(1-1)*4] Plot_energy_vector[4 +(1-1)*4] 
-# ]
-
-# for i in 1:10
-#     Ploty = [
-#     Plot_energy_vector[1+(i-1)*4] Plot_energy_vector[2+(i-1)*4]
-#     Plot_energy_vector[3+(i-1)*4] Plot_energy_vector[4+(i-1)*4] 
-# ]
-#     Plot_energy = plot(Ploty...)
-#     savefig(Plot_energy,"plots/plot_energy_trimester$i.png")
-# end
-
-# H = plot(H...)
-# savefig(H,"plots/h.png")
