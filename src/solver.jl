@@ -1,33 +1,36 @@
 using JuMP, Gurobi, HiGHS
-include("default_values.jl")
+include("constants.jl")
 
 
 """
-## Arguments
-- wind_profile : Wind profile (% of the capacity)
-- solar_profile : Solar profile (% of the capacity)
-- wind_capa : Capacity of the wind farm (MW), if missing, is considered a variable to optimize
-- solar_capa : Capacity of the solar farm (MW), if missing, is considered a variable to optimize
-- battery_capa : Capacity of the battery (MWh), if missing, is considered a variable to optimize
-- tank_capa : Capacity of the tank (Kg), if missing, is considered a variable to optimize
-- elec_capa : Capacity of the electrolyzer (MW), if missing, is considered a variable to optimize
+Solve the MILP problem for the hydrogen production and storage.
+## Positional arguments
+- windProfile : Array of the wind profile (% of the total capacity)
+- solarProfile : Array of the solar profile (% of the total capacity), same length as windProfile
 - demand : Demand of hydrogen (Kg)
-- price_grid : Price of the grid (€ / MWh)
-- price_curtailing : Price of the curtailed energy (€ / MWh)
-- price_penality: Penality for changing the production (€ / times the production changes)
-- price_prod_change : Price for changing the production, per Kg of change (€ / Kg of change)
-- ebat : Efficiency of the battery, discharge per month
-- fbat : Maximum flow of the battery (MW)
-- eelec : Efficiency of the electrolyzer (MWh / Kg)
+## Keyword arguments
+- wind_capa
+- solar_capa
+- battery_capa
+- tank_capa
+- electro_capa
+- price_grid : Price of the electricity from the grid (€ / MWh)
+- price_curtailing : Price of the curtailed electricity (€ / MWh)
+- price_penality : Price for changing the production, per Kg of change.
+- capa_bat_upper : Upper bound for the battery capacity
+- capa_elec_upper : Upper bound for the electrolyzer capacity
+- ebat : Efficiency of the battery (Discharge rate per month)
+- fbat : Maximum flow of energy to / from the battery (MW)
+- eelec : Efficiency of the electrolyzer (Mwh / Kg)
 - cost_elec : Cost of the electrolyzer (€ / MW)
 - cost_bat : Cost of the battery (€ / MWh)
 - cost_tank : Cost of the tank (€ / Kg)
 - cost_wind : Cost of installing a wind turbine (€ / MW)
 - cost_solar : Cost of installing a solar panel (€ / MW)
-- initCharge : Initial charge of the battery (MWh)
-- initStock : Initial stock of the tank (Kg)
-- finalStock : Final stock of the tank (Kg), if None, the final stock is not constrained
-- finalCharge : Final charge of the battery (MWh), if None, the final charge is not constrained
+- initial_charge : Initial charge of the battery (MWh), defaults to 0
+- initial_stock : Initial stock of hydrogen (Kg), defaults to 0
+- final_charge : Final charge of the battery (MWh), defaults to not constrainded
+- final_stock : Final stock of hydrogen (Kg), defaults to not constrained
 ## Returns a dictionnary with following keys
 - wind_capa : Capacity of the wind farm (MW)
 - solar_capa : Capacity of the solar farm (MW)
@@ -49,62 +52,60 @@ include("default_values.jl")
 function solve(
     windProfile :: Array{Float64, 1},
     solarProfile :: Array{Float64, 1},
-    demand :: Float64,
-    windCapa = missing,
-    solarCapa = missing,
-    batteryCapa  = missing,
-    tankCapa = missing,
-    electroCapa = missing,
-    price_grid = PRICE_GRID,
-    price_curtailing = PRICE_CURTAILING,
-    price_penality = PRICE_PENALITY, # Penality for changing the production
-    price_prod_change = PRICE_PROD_CHANGE, # Price for changing the production, per Kg of change.
-    capa_bat_upper = CELEC, # Upper bound for the electrolyzer capacity
-    capa_elec_upper = CAPA_BAT_UPPER, # Upper bound for the battery capacity
-    ebat = EBAT,
-    fbat = FBAT,
-    eelec = EELEC,
-    cost_elec = COST_ELEC,
-    cost_bat = COST_BAT,
-    cost_tank = COST_TANK,
-    cost_wind = PRICE_WIND,
-    cost_solar = PRICE_SOLAR,
-    initCharge =  0.,
-    initStock = 0.,
-    finalCharge = missing,
-    finalStock = missing
+    demand :: Float64;
+    wind_capa :: Float64 = -1.,
+    solar_capa :: Float64 = -1.,
+    battery_capa :: Float64 = -1.,
+    tank_capa :: Float64 = -1.,
+    electro_capa ::Float64 = -1.,
+    price_grid :: Float64 = PRICE_GRID,
+    price_curtailing :: Float64 = PRICE_CURTAILING,
+    price_penality :: Float64 = price_penality, # Price for changing the production, per Kg of change.
+    capa_bat_upper :: Float64 = CELEC, # Upper bound for the electrolyzer capacity
+    capa_elec_upper :: Float64 = CAPA_BAT_UPPER, # Upper bound for the battery capacity
+    ebat :: Float64 = EBAT,
+    fbat  :: Float64 = FBAT,
+    eelec  :: Float64 = EELEC,
+    cost_elec :: Float64 = COST_ELEC,
+    cost_bat :: Float64 = COST_BAT,
+    cost_tank :: Float64 = COST_TANK,
+    cost_wind :: Float64 = PRICE_WIND,
+    cost_solar :: Float64 = PRICE_SOLAR,
+    initial_charge :: Float64 =  0.,
+    initial_stock :: Float64 = 0.,
+    final_charge :: Float64 = missing,
+    final_stock :: Float64 = missing,
+    verbose :: Bool = false,
 )
     # Number of time steps
     T = length(windProfile)
     if length(solarProfile) != T
         throw(ArgumentError("The length of the solar profile should be equal to the length of the wind profile"))
     end
-
-    # Only use one way to penalize production change
-    if price_penality > 0 && price_prod_change > 0
-        throw(ArgumentError("Only one way to penalize production change should be used"))
-    end
-
     # Create the model
     model = Model(Gurobi.Optimizer)
-    println("Adding variables ... ")
-    # Electricity production capacities
-    if ismissing(windCapa)
-        windCapa = @variable(model, lower_bound = 0.)
+
+    if !verbose
+        set_silent(model)
     end
-    if ismissing(solarCapa)
-        solarCapa = @variable(model, lower_bound = 0.)
+    if verbose
+        println("Adding variables ...")
     end
-    # Storage variables
-    if ismissing(batteryCapa)
-        batteryCapa = @variable(model, lower_bound = 0., upper_bound = capa_bat_upper)
+    # Potential variables
+    if wind_capa < 0
+        wind_capa = @variable(model, lower_bound = 0.)
     end
-    if ismissing(tankCapa)
-        tankCapa = @variable(model, lower_bound = 0.)
+    if solar_capa < 0
+        solar_capa = @variable(model, lower_bound = 0.)
     end
-    # Electrolyser capacity
-    if ismissing(electroCapa)
-        electroCapa = @variable(model, lower_bound = 0., upper_bound = capa_elec_upper)
+    if battery_capa < 0
+        battery_capa = @variable(model, lower_bound = 0., upper_bound = capa_bat_upper)
+    end
+    if tank_capa < 0
+        tank_capa = @variable(model, lower_bound = 0.)
+    end
+    if electro_capa < 0
+        electro_capa = @variable(model, lower_bound = 0., upper_bound = capa_elec_upper)
     end
     # Main variables
     charge = @variable(model, [1:T+1], lower_bound = 0.)
@@ -117,35 +118,31 @@ function solve(
     # Flow of elecricity / hydrogen
     flowBat = @variable(model, [1:T])
     flowH2 = @variable(model, [1:T])
-    # Production changing penality
-    if price_penality > 0
-        prodHasChanged = @variable(model, [2:T], Bin)
-    end
-
-    if price_prod_change > 0
-        prodChange_cost = @variable(model, [2:T])
-    end
     # Costs pseudo-variables
+    # Production changing penality
+    prodChange_cost = @variable(model, [2:T])
     operating_cost = @variable(model)
     storage_cost = @variable(model)
     electrolyser_cost = @variable(model)
     electricity_plant_cost = @variable(model)
 
-    println("Adding constraints ... ")
-    # Initial charge & stock
-    @constraint(model, charge[1] == initCharge)
-    @constraint(model, stock[1] == initStock)
-    # Final charge & stock
-    if !ismissing(finalCharge)
-        @constraint(model, charge[T+1] == finalCharge)
+    if verbose
+        println("Adding constraints ...")
     end
-    if !ismissing(finalStock)
-        @constraint(model, stock[T+1] == finalStock)
+    # Initial charge & stock
+    @constraint(model, charge[1] == initial_charge)
+    @constraint(model, stock[1] == initial_stock)
+    # Final charge & stock
+    if !ismissing(final_charge)
+        @constraint(model, charge[T+1] == final_charge)
+    end
+    if !ismissing(final_stock)
+        @constraint(model, stock[T+1] == final_stock)
     end
     # Get the per hour discharge of the batteryn from the per month parameter
     perHourDischarge = ebat ^ (1 / (30 * 24))
     # PPA contract
-    @constraint(model, [t ∈ 1:T], elecPPA[t] == windProfile[t] * windCapa + solarProfile[t] * solarCapa)
+    @constraint(model, [t ∈ 1:T], elecPPA[t] == windProfile[t] * wind_capa + solarProfile[t] * solar_capa)
     # Demand satisfaction
     @constraint(model, [t ∈ 1:T], prod[t] == flowH2[t] + demand)
     # Electricity consumption
@@ -156,63 +153,36 @@ function solve(
     @constraint(model, [t ∈ 1:T], stock[t+1] == 1 * stock[t] + flowH2[t])
     # Flow of electricity / hydrogen
     @constraint(model, [t ∈ 1:T], -fbat <= flowBat[t] <= fbat)
-    # # Can't fill in less than 10 hours
-    # @constraint(model, [t ∈ 1:T], flowBat[t] <= batteryCapa / 10)
-    # @constraint(model, [t ∈ 1:T], - flowBat[t] <= batteryCapa / 10)
-    # @constraint(model, [t ∈ 1:T], flowH2[t] <= tankCapa / 10)
-    # @constraint(model, [t ∈ 1:T], - flowH2[t] <= tankCapa / 10)
     # Electrolyzer consumption
-    @constraint(model, [t ∈ 1:T], prod[t] * eelec <= electroCapa)
+    @constraint(model, [t ∈ 1:T], prod[t] * eelec <= electro_capa)
     # Maximum charge & stock
-    @constraint(model, [t ∈ 1:T+1], charge[t] <= batteryCapa)
-    @constraint(model, [t ∈ 1:T+1], stock[t] <= tankCapa)
-    # Boolean variable for production change
-    if price_penality > 0
-        @constraint(model, [t ∈ 2:T], prod[t] - prod[t-1] <= 2 * capa_elec_upper * prodHasChanged[t] / eelec)
-        @constraint(model, [t ∈ 2:T], prod[t-1] - prod[t] <= 2 * capa_elec_upper * prodHasChanged[t] / eelec)
-    end
+    @constraint(model, [t ∈ 1:T+1], charge[t] <= battery_capa)
+    @constraint(model, [t ∈ 1:T+1], stock[t] <= tank_capa)
     # Production change cost if applicable
-    if price_prod_change > 0
-        @constraint(model, [t ∈ 2:T], price_prod_change * (prod[t] - prod[t-1]) <= prodChange_cost[t])
-        @constraint(model, [t ∈ 2:T], price_prod_change * (prod[t-1] - prod[t]) <= prodChange_cost[t])
-    end
+    @constraint(model, [t ∈ 2:T], price_penality * (prod[t] - prod[t-1]) <= prodChange_cost[t])
+    @constraint(model, [t ∈ 2:T], price_penality * (prod[t-1] - prod[t]) <= prodChange_cost[t])
     # Operating cost
-    if price_penality > 0
-        @constraint(model, operating_cost == 
-        sum(elecGrid) * price_grid
-        + sum(curtailing) * price_curtailing 
-        + sum(prodHasChanged) * price_penality
-        )
-    elseif price_prod_change > 0
-        @constraint(model, operating_cost == 
-        sum(elecGrid) * price_grid
-        + sum(curtailing) * price_curtailing
-        + sum(prodChange_cost)
-        )
-    else
-        @constraint(model, operating_cost == 
-        sum(elecGrid) * price_grid
-        + sum(curtailing) * price_curtailing
-        )
-    end
+    @constraint(model, operating_cost == sum(elecGrid) * price_grid + sum(curtailing) * price_curtailing + sum(prodChange_cost))
     # Storage cost
-    @constraint(model, storage_cost == cost_bat * batteryCapa + cost_tank * tankCapa)
+    @constraint(model, storage_cost == cost_bat * battery_capa + cost_tank * tank_capa)
     # Electrolyser cost
-    @constraint(model, electrolyser_cost == cost_elec * electroCapa)
+    @constraint(model, electrolyser_cost == cost_elec * electro_capa)
     # Electricity production cost
-    @constraint(model, electricity_plant_cost == windCapa * cost_wind + solarCapa * cost_solar)
+    @constraint(model, electricity_plant_cost == wind_capa * cost_wind + solar_capa * cost_solar)
     # Objective
     @objective(model, Min, operating_cost + storage_cost + electrolyser_cost + electricity_plant_cost)
 
-    println("Optimizing ...")
+    if verbose
+        println("Solving the model ...")
+    end
     optimize!(model)
 
     return Dict(
-        "wind_capa" => value.(windCapa),
-        "solar_capa" => value.(solarCapa),
-        "battery_capa" => value.(batteryCapa),
-        "tank_capa" => value.(tankCapa),
-        "electro_capa" => value.(electroCapa),
+        "wind_capa" => value.(wind_capa),
+        "solar_capa" => value.(solar_capa),
+        "battery_capa" => value.(battery_capa),
+        "tank_capa" => value.(tank_capa),
+        "electro_capa" => value.(electro_capa),
         "charge" => value.(charge),
         "prod" => value.(prod),
         "stock" => value.(stock),
