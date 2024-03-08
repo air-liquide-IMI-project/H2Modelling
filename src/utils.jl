@@ -2,10 +2,10 @@ using Dates
 using Plots
 
 function print_solution_propreties(
-    output::Dict{String, Any},
-    time_profile :: Vector{DateTime},
-    wind_profile :: Vector{Float64},
-    solar_profile :: Vector{Float64},
+    output::Dict{String, Any};
+    time :: Vector{DateTime},
+    wind :: Vector{Float64},
+    solar :: Vector{Float64},
 )
     # Extract the solution values
     battery_capa = trunc(Int64, output["battery_capa"])
@@ -25,10 +25,10 @@ function print_solution_propreties(
     println("Wind capacity: $wind_capa MW, Solar capacity: $solar_capa MW \n")
     # Energy Mix 
     mix_in_capacity = wind_capa / (wind_capa + solar_capa)
-    mix_in_generation = wind_capa * sum(wind_profile) / (wind_capa * sum(wind_profile) + solar_capa * sum(solar_profile))
+    mix_in_generation = wind_capa * sum(wind) / (wind_capa * sum(wind) + solar_capa * sum(solar))
     println("Wind proportion in capacity: $mix_in_capacity \nWind proportion in generation: $mix_in_generation \n")
     # Total energy needed to run the electrolyser
-    total_elec_needed = DEMAND * EELEC * length(time_profile)
+    total_elec_needed = DEMAND * EELEC * length(time)
     total_elec_produced = trunc(sum(consPPA_out))
     total_elec_imported = trunc(sum(elec_out))
     total_elec_curtailment = trunc(sum(curtailment_out))
@@ -43,8 +43,9 @@ function print_solution_propreties(
 end;
 
 function plot_solution(
-    output::Dict,
-    time_index :: Vector{DateTime} = missing,
+    output::Dict;
+    demand :: Float64,
+    time :: Vector{DateTime} = [],
 )
     # Extract the solution values
     battery_capa = trunc(Int64, output["battery_capa"])
@@ -60,36 +61,36 @@ function plot_solution(
     consPPA_out = output["elecPPA"];
 
     # if time index is not given, plot along indices
-    if ismissing(time_index)
-        time_index = 1:length(prod_out)
-        time_index_ext = 1:(length(prod_out) + 1)
+    if isempty(time)
+        time = 1:length(prod_out)
+        time_ext = 1:(length(prod_out) + 1)
     # if time index is given, plot along it
     else
-        last_hour = time_index[end] + Hour(1)
-        time_index_ext = vcat(time_index, last_hour)
+        last_hour = time[end] + Hour(1)
+        time_ext = vcat(time, last_hour)
     end
 
     # Plot the production & tank charge over time
     prod = plot(size=(1200, 500), legend=:topleft, xlabel="Time (h)", ylabel="Production (Kg)",
-        title="Hydrogen, Demand : $D kg/h, Electrolyser: $(electro_capa / EELEC) kg/h")
-    plot!(prod, time_index, prod_out, label="Production")
+        title="Hydrogen, Demand : $demand kg/h, Electrolyser: $(electro_capa / EELEC) kg/h")
+    plot!(prod, time, prod_out, label="Production")
 
     # Plot the consumptions, curtailment and battery charge
     cons = plot(size=(1200, 500), legend=:topleft, xlabel="Time (h)", ylabel="Electricity consumption (Mwh)",
         title="Consumption, Solar capacity: $(trunc(solar_capa)) MW, Wind capacity: $(trunc(wind_capa)) MW")
-    plot!(cons, time_index, elec_out, label="Grid consumption")
-    plot!(cons, time_index, consPPA_out, label="PPA consumption")
-    plot!(cons, time_index, -curtailment_out, label="Curtailment")
+    plot!(cons, time, elec_out, label="Grid consumption")
+    plot!(cons, time, consPPA_out, label="PPA consumption")
+    plot!(cons, time, -curtailment_out, label="Curtailment")
 
     # Plot the charge levels
     level_bat = plot(size=(1200, 500), legend=:topleft, xlabel="Time (h)", ylabel="Battery charge (Mwh)",
         title="Battery charge level, Battery capacity : $battery_capa MWh")
-    plot!(level_bat, time_index_ext, charge_out, label="Battery charge")
+    plot!(level_bat, time_ext, charge_out, label="Battery charge")
 
     # Plot the tank charge level
     level_tank = plot(size=(1200, 500), legend=:topleft, xlabel="Time (h)", ylabel="Tank charge (Kg)",
         title="Tank charge level, Tank capacity : $tank_capa Kg")
-    plot!(level_tank, time_index_ext, stock_out, label="Tank charge")
+    plot!(level_tank, time_ext, stock_out, label="Tank charge")
 
     return prod, cons, level_bat, level_tank
 end;

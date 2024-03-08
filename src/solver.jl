@@ -73,8 +73,8 @@ function solve(
     cost_solar :: Float64 = PRICE_SOLAR,
     initial_charge :: Float64 =  0.,
     initial_stock :: Float64 = 0.,
-    final_charge :: Float64 = missing,
-    final_stock :: Float64 = missing,
+    final_charge :: Float64 = -1.,
+    final_stock :: Float64 = -1.,
     verbose :: Bool = false,
 )
     # Number of time steps
@@ -133,10 +133,10 @@ function solve(
     @constraint(model, charge[1] == initial_charge)
     @constraint(model, stock[1] == initial_stock)
     # Final charge & stock
-    if !ismissing(final_charge)
+    if final_charge >= 0
         @constraint(model, charge[T+1] == final_charge)
     end
-    if !ismissing(final_stock)
+    if final_stock >= 0
         @constraint(model, stock[T+1] == final_stock)
     end
     # Get the per hour discharge of the batteryn from the per month parameter
