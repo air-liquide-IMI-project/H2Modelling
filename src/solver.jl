@@ -52,29 +52,30 @@ Solve the MILP problem for the hydrogen production and storage.
 function solve(
     windProfile :: Array{Float64, 1},
     solarProfile :: Array{Float64, 1},
-    demand :: Float64;
-    wind_capa :: Float64 = -1.,
-    solar_capa :: Float64 = -1.,
-    battery_capa :: Float64 = -1.,
-    tank_capa :: Float64 = -1.,
-    electro_capa ::Float64 = -1.,
-    price_grid :: Float64 = PRICE_GRID,
-    price_curtailing :: Float64 = PRICE_CURTAILING,
-    price_penality :: Float64 = price_penality, # Price for changing the production, per Kg of change.
-    capa_bat_upper :: Float64 = CELEC, # Upper bound for the electrolyzer capacity
-    capa_elec_upper :: Float64 = CAPA_BAT_UPPER, # Upper bound for the battery capacity
-    ebat :: Float64 = EBAT,
-    fbat  :: Float64 = FBAT,
-    eelec  :: Float64 = EELEC,
-    cost_elec :: Float64 = COST_ELEC,
-    cost_bat :: Float64 = COST_BAT,
-    cost_tank :: Float64 = COST_TANK,
-    cost_wind :: Float64 = PRICE_WIND,
-    cost_solar :: Float64 = PRICE_SOLAR,
-    initial_charge :: Float64 =  0.,
-    initial_stock :: Float64 = 0.,
-    final_charge :: Float64 = -1.,
-    final_stock :: Float64 = -1.,
+    demand :: Union{Float64, Int};
+    gurobi_env = Gurobi.Env(),
+    wind_capa = -1.,
+    solar_capa = -1.,
+    battery_capa = -1.,
+    tank_capa = -1.,
+    electro_capa = -1.,
+    price_grid  = PRICE_GRID,
+    price_curtailing = PRICE_CURTAILING,
+    price_penality = PRICE_PENALITY, # Price for changing the production, per Kg of change.
+    capa_bat_upper = CAPA_ELEC_UPPER, # Upper bound for the electrolyzer capacity
+    capa_elec_upper = CAPA_BAT_UPPER, # Upper bound for the battery capacity
+    ebat = EBAT,
+    fbat = FBAT,
+    eelec = EELEC,
+    cost_elec = COST_ELEC,
+    cost_bat = COST_BAT,
+    cost_tank = COST_TANK,
+    cost_wind = COST_WIND,
+    cost_solar = COST_SOLAR,
+    initial_charge =  -1.,
+    initial_stock = -1.,
+    final_charge = -1.,
+    final_stock = -1.,
     verbose :: Bool = false,
 )
     # Number of time steps
@@ -83,7 +84,7 @@ function solve(
         throw(ArgumentError("The length of the solar profile should be equal to the length of the wind profile"))
     end
     # Create the model
-    model = Model(Gurobi.Optimizer)
+    model = Model(() -> Gurobi.Optimizer(gurobi_env))
 
     if !verbose
         set_silent(model)
@@ -130,13 +131,23 @@ function solve(
         println("Adding constraints ...")
     end
     # Initial charge & stock
-    @constraint(model, charge[1] == initial_charge)
-    @constraint(model, stock[1] == initial_stock)
+    if initial_charge >= 0
+        @constraint(model, charge[1] == initial_charge)
+    end
+    if initial_stock >= 0
+        @constraint(model, stock[1] == initial_stock)
+    end
     # Final charge & stock
     if final_charge >= 0
+        if verbose
+            println("Constraining the final charge to ", final_charge)
+        end
         @constraint(model, charge[T+1] == final_charge)
     end
     if final_stock >= 0
+        if verbose
+            println("Constraining the final stock to ", final_stock)
+        end
         @constraint(model, stock[T+1] == final_stock)
     end
     # Get the per hour discharge of the batteryn from the per month parameter
@@ -186,11 +197,11 @@ function solve(
         "charge" => value.(charge),
         "prod" => value.(prod),
         "stock" => value.(stock),
-        "elecGrid" => value.(elecGrid),
-        "curtail" => value.(curtailing),
-        "elecPPA" => value.(elecPPA),
-        "flowBat" => value.(flowBat),
-        "flowH2" => value.(flowH2),
+        "elec_grid" => value.(elecGrid),
+        "curtailing" => value.(curtailing),
+        "elec_ppa" => value.(elecPPA),
+        "flow_bat" => value.(flowBat),
+        "flow_H2" => value.(flowH2),
         "operating_cost" => value(operating_cost),
         "storage_cost" => value(storage_cost),
         "electrolyser_cost" => value(electrolyser_cost),
