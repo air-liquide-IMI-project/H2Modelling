@@ -13,7 +13,7 @@ CAPA_BAT_UPPER = 12 * DEMAND * EELEC # MW, 12 hours of production
 COST_TANK = 407. # € / Kg
 # Grid parameters
 PRICE_GRID = 1000. # € / MWh
-PRICE_CURTAILING = 750. # € / MWh;
+PRICE_CURTAILING = 500. # € / MWh;
 PRICE_PENALITY = 1 # € / kg of change in production level
 # Renewable pricing, from https://atb.nrel.gov/electricity/2022/index
 # For now : 20 year lifespan, no discount rate + O&M cost per year

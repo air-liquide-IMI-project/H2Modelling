@@ -31,8 +31,6 @@ function simulator(
         action = policy[index_current_stock, t]
         if verbose
             println("Week ", t)
-            println("Current stock: ", current_stock)
-            println("Current target: ", states[action])
         end
         output = solve(
             wind_profile = wind_by_week[t],
@@ -48,7 +46,7 @@ function simulator(
             final_charge = -1.,
             final_stock = states[action],
             gurobi_env = gurobi_env,
-            verbose = verbose
+            verbose = false
         )
         # Update the state
         current_stock = output["stock"][end]

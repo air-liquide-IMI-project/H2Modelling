@@ -86,10 +86,8 @@ function solve(
     end
     # Create the model
     model = Model(() -> Gurobi.Optimizer(gurobi_env))
-
-    if !verbose
-        set_silent(model)
-    end
+    set_silent(model)
+    
     if verbose
         println("Adding variables ...")
     end
