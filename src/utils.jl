@@ -16,9 +16,9 @@ function print_solution_propreties(
     operating_cost = output["operating_cost"],
     electrolyser_cost = output["electrolyser_cost"],
     electricity_cost = output["electricity_plant_cost"],
-    elec_out = output["elec_grid"],
-    curtailment_out = output["curtailing"],
-    consPPA_out = output["elec_ppa"],
+    elec_grid = output["elec_grid"],
+    curtailment = output["curtailing"],
+    cons_ppa = output["elec_ppa"],
 )
     # Capacities
     println("Battery capacity: $battery_capa MWh, Tank capacity: $tank_capa kg, Electrolyser capacity: $(electro_capa / EELEC) kg/h")
@@ -29,12 +29,13 @@ function print_solution_propreties(
     println("Wind proportion in capacity: $mix_in_capacity \nWind proportion in generation: $mix_in_generation \n")
     # Total energy needed to run the electrolyser
     total_elec_needed = DEMAND * EELEC * length(time)
-    total_elec_produced = trunc(sum(consPPA_out))
-    total_elec_imported = trunc(sum(elec_out))
-    total_elec_curtailment = trunc(sum(curtailment_out))
+    total_elec_produced = trunc(sum(cons_ppa))
+    total_elec_imported = trunc(sum(elec_grid))
+    total_elec_curtailment = trunc(sum(curtailment))
     println("Total electricity needed: $(trunc(total_elec_needed)) MWh, Total electricity produced: $(trunc(total_elec_produced)) MWh")
     println("Total electricity imported: $(trunc(total_elec_imported)) MWh, Total electricity curtailment: $(trunc(total_elec_curtailment)) MWh \n")
-    println("Produced / Needed ratio : $(trunc(total_elec_produced / total_elec_needed)) \n")
+    println("Produced / Needed ratio : $(total_elec_produced / total_elec_needed)")
+    println("Curtailed / Produced ratio : $(total_elec_curtailment / total_elec_produced) \n")
     # Costs
     println("Storage cost: $(trunc(storage_cost)), operating cost: $(trunc(operating_cost))")
     println("Electrolyser cost : $(trunc(electrolyser_cost)), electricity plant cost: $(trunc(electricity_cost))")
@@ -55,9 +56,9 @@ function plot_solution(
     prod_out = output["prod"],
     charge_out = output["charge"],
     stock_out = output["stock"],
-    elec_out = output["elec_grid"],
-    curtailment_out = output["curtailing"],
-    consPPA_out = output["elec_ppa"]
+    elec_grid = output["elec_grid"],
+    curtailment = output["curtailing"],
+    cons_ppa = output["elec_ppa"]
 )
     # if time index is not given, plot along indices
     if isempty(time)
@@ -75,9 +76,9 @@ function plot_solution(
     # Plot the consumptions, curtailment and battery charge
     cons = plot(size=(1200, 500), legend=:topleft, xlabel="Time (h)", ylabel="Electricity consumption (Mwh)",
         title="Consumption, Solar capacity: $(trunc(solar_capa)) MW, Wind capacity: $(trunc(wind_capa)) MW")
-    plot!(cons, time, elec_out, label="Grid consumption")
-    plot!(cons, time, consPPA_out, label="PPA consumption")
-    plot!(cons, time, -curtailment_out, label="Curtailment")
+    plot!(cons, time, elec_grid, label="Grid consumption")
+    plot!(cons, time, cons_ppa, label="PPA consumption")
+    plot!(cons, time, -curtailment, label="Curtailment")
     # Plot the charge levels
     level_bat = plot(size=(1200, 500), legend=:topleft, xlabel="Time (h)", ylabel="Battery charge (Mwh)",
         title="Battery charge level, Battery capacity : $(trunc(battery_capa)) MWh")
