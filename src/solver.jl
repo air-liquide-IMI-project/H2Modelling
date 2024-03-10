@@ -4,11 +4,11 @@ include("constants.jl")
 
 """
 Solve the MILP problem for the hydrogen production and storage.
-## Positional arguments
-- windProfile : Array of the wind profile (% of the total capacity)
-- solarProfile : Array of the solar profile (% of the total capacity), same length as windProfile
-- demand : Demand of hydrogen (Kg)
 ## Keyword arguments
+- wind_profile : Array of the wind profile (% of the total capacity)
+- solar_profile : Array of the solar profile (% of the total capacity), same length as wind_profile
+- demand : Demand of hydrogen (Kg)
+## Optional keyword arguments
 - wind_capa
 - solar_capa
 - battery_capa
@@ -50,9 +50,10 @@ Solve the MILP problem for the hydrogen production and storage.
 - electricity_plant_cost : Construction cost of the electricity production (€)
 """
 function solve(
-    windProfile :: Array{Float64, 1},
-    solarProfile :: Array{Float64, 1},
-    demand :: Union{Float64, Int};
+    ;
+    wind_profile :: Array{Float64, 1},
+    solar_profile :: Array{Float64, 1},
+    demand :: Union{Float64, Int},
     gurobi_env = Gurobi.Env(),
     wind_capa = -1.,
     solar_capa = -1.,
@@ -79,8 +80,8 @@ function solve(
     verbose :: Bool = false,
 )
     # Number of time steps
-    T = length(windProfile)
-    if length(solarProfile) != T
+    T = length(wind_profile)
+    if length(solar_profile) != T
         throw(ArgumentError("The length of the solar profile should be equal to the length of the wind profile"))
     end
     # Create the model
@@ -153,7 +154,7 @@ function solve(
     # Get the per hour discharge of the batteryn from the per month parameter
     perHourDischarge = ebat ^ (1 / (30 * 24))
     # PPA contract
-    @constraint(model, [t ∈ 1:T], elecPPA[t] == windProfile[t] * wind_capa + solarProfile[t] * solar_capa)
+    @constraint(model, [t ∈ 1:T], elecPPA[t] == wind_profile[t] * wind_capa + solar_profile[t] * solar_capa)
     # Demand satisfaction
     @constraint(model, [t ∈ 1:T], prod[t] == flowH2[t] + demand)
     # Electricity consumption

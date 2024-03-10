@@ -29,10 +29,15 @@ function simulator(
     for t in 1:T
         # Get the action
         action = policy[index_current_stock, t]
+        if verbose
+            println("Week ", t)
+            println("Current stock: ", current_stock)
+            println("Current target: ", states[action])
+        end
         output = solve(
-            wind_by_week[t],
-            solar_by_week[t],
-            demand,
+            wind_profile = wind_by_week[t],
+            solar_profile = solar_by_week[t],
+            demand = demand,
             wind_capa = wind_capa,
             solar_capa = solar_capa,
             battery_capa = battery_capa,
