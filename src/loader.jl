@@ -56,9 +56,9 @@ function load_by_periods(filename, period_length = 7;
     # Only keep the year we want
     data = filter(row -> Dates.year(row.utc_timestamp) in years, data)
     disallowmissing!(data)
-    wind_by_periods = []
-    solar_by_periods = []
-    time_by_periods = []
+    wind_by_periods = Vector{Vector{Float64}}()
+    solar_by_periods = Vector{Vector{Float64}}()
+    time_by_periods = Vector{Vector{DateTime}}()
     # Split the data into periods
     for i in 1:period_length:length(data.utc_timestamp)
         subData = data[i:min(i+period_length-1, end), :]
