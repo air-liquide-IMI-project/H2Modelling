@@ -1,5 +1,5 @@
 include("./solver.jl")
-
+include("./constants.jl")
 
 function dynamic_solver(
     T :: Int;
@@ -22,6 +22,9 @@ function dynamic_solver(
     policy = zeros(Int, N, T)
     # battery_charge[x, t] is the charge of the battery at the beginning of week t if the stock is x
     battery_charge = -ones(Float64, N, T+1)
+    # prod_level[x, t] is the production level at the beginning of week t if the stock is x
+    # This is to take into account the production change penality cost when changing time period
+    prod_level = zeros(Float64, N, T)
     # Main loop, backward induction
     for t in T:-1:1
         if verbose
@@ -56,11 +59,16 @@ function dynamic_solver(
                 )
                 # Update the cost
                 cost = output["operating_cost"]
+                # Add the production change penality cost at every beginning of week (not computed by the milp solver)
+                if t < T
+                    cost += PRICE_PENALITY * abs(prod_level[a, t+1] - output["prod"][end])
+                end
                 if cost < best_cost
                     best_cost = cost
                     V[x, t] = cost + V[a, t+1]
                     policy[x, t] = a
                     battery_charge[x, t] = output["charge"][1]
+                    prod_level[x, t] = output["prod"][1]
                 end
             end
         end

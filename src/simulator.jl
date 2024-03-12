@@ -1,5 +1,5 @@
 include("./solver.jl")
-
+include("./constants.jl")
 
 function simulator(
     T :: Int;
@@ -54,6 +54,10 @@ function simulator(
         index_current_stock = action
         # Update the costs
         running_cost += output["operating_cost"]
+        # Add the production change penality cost at every beginning of week (not computed by the milp solver)
+        if t > 1
+            running_cost += PRICE_PENALITY * abs(prod[end] - output["prod"][1])
+        end
         # Update the outputs
         append!(prod, output["prod"])
         append!(charge, output["charge"][Not(end)])
