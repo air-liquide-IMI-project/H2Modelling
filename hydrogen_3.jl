@@ -22,32 +22,67 @@ using DataFrames
 db = SQLite.DB(raw"DE_data_2.sqlite")
 
 
-strq = DBInterface.execute(db, "SELECT DE_week_index FROM DE_data_2")
+week_index_database = DBInterface.execute(db, "SELECT DE_week_index FROM DE_data_2")
+year_index_database = DBInterface.execute(db, "SELECT DE_year FROM DE_data_2")
+DE_price_database = DBInterface.execute(db, "SELECT DE_price FROM DE_data_2")
+DE_solar_profile_database = DBInterface.execute(db, "SELECT DE_solar_profile FROM DE_data_2")
+DE_wind_profile_database = DBInterface.execute(db, "SELECT DE_wind_profile FROM DE_data_2")
+
 # strq_price = DBInterface.execute(db, "SELECT DE_price_day_ahead FROM Mix_date_generation_price")
 
-FRF = Vector{Any}()
+week_index = Vector{Any}()
+year_index = Vector{Any}()
+DE_price = Vector{Any}()
+DE_solar_profile = Vector{Any}()
+DE_wind_profile = Vector{Any}()
 # DE_price  = Float64[]
 
-strq
-# g=0
-for row in strq
-    push!(FRF, row[1]) # Assuming the value is in the first column
+
+for row in week_index_database
+    push!(week_index, row[1]) # Assuming the value is in the first column
 end
-FRF
+for row in year_index_database
+    push!(year_index, row[1]) # Assuming the value is in the first column
+end
+for row in DE_price_database
+    push!(DE_price, row[1]) # Assuming the value is in the first column
+end
+for row in DE_solar_profile_database
+    push!(DE_solar_profile, row[1]) # Assuming the value is in the first column
+end
+for row in DE_wind_profile_database
+    push!(DE_wind_profile, row[1]) # Assuming the value is in the first column
+end
 
-integer_array = [parse(Int, FRF[i]) for i in 1: length(FRF)]
-# for row in strq_price
-#     push!(DE_price, row[1]) # Assuming the value is in the first column
-# end
-# g
-# DE_price
 
- G = parse(Int,FRF[4])
+
+
+week_index = [parse(Int, week_index[i]) for i in 1: length(week_index)]
+DE_price = [parse(Float16, DE_price[i]) for i in 1: length(DE_price)]
+DE_solar_profile = [parse(Float16, DE_solar_profile[i]) for i in 1: length(DE_solar_profile)]
+DE_wind_profile = [parse(Float16, DE_wind_profile[i]) for i in 1: length(DE_wind_profile)]
+
 
 Index_first_week = 37
 Number_weeks = 5 #we count here also the first week, so one initial week + 4 random weeks
-Chosen_Year = 2016
+Chosen_Year = 2016.0
 
+Different_years = unique(year_index)
+
+Year_to_pick = [year for year in Different_years if year!=2014.0]
+Year_picked = Year_to_pick[rand(1:length(Year_to_pick), Number_weeks-1)]
+
+week_to_pick = [i for i in Index_first_week+1 : Index_first_week + Number_weeks-1]
+Index_vector = Vector{Any}()
+
+push!(Index_vector, [j for j in 1:length(DE_price) if week_index[j] == Index_first_week && year_index[j] == Chosen_Year])
+Year_picked
+for i in 1: Number_weeks-1
+    push!(Index_vector, [j for j in 1:length(DE_price) if week_index[j]== week_to_pick[i] && year_index[j]==Year_picked[i]])
+end
+
+Index_vector
+Length_Demand = length(Index_vector[4])
 
 Best_cost = Vector{Float64}()
 Final_hyd_stock_vector = Vector{Float64}()
