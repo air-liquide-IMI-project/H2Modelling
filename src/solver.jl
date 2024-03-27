@@ -8,7 +8,9 @@ Solve the MILP problem for the hydrogen production and storage.
 - wind_profile : Array of the wind profile (% of the total capacity)
 - solar_profile : Array of the solar profile (% of the total capacity), same length as wind_profile
 - demand : Demand of hydrogen (Kg)
-## Optional keyword arguments
+## Optional keyword arguments, if not provided, the default values are used (see constants.jl)
+- demand : Demand of hydrogen (Kg)
+- gurobi_env : Gurobi environment, defaults to Gurobi.Env()
 - wind_capa
 - solar_capa
 - battery_capa
@@ -40,10 +42,11 @@ Solve the MILP problem for the hydrogen production and storage.
 - charge : Battery charge (MWh)
 - prod : Production of hydrogen (Kg)
 - stock : Stock of hydrogen in the tank (Kg)
-- elecGrid : Electricity consumption from the grid (MWh)
-- consPPA : Consumption of PPA energy (MWh)
-- flowBat : Flow of energy to / from the battery ( > 0 if charging, < 0 if discharging) (MWh)
-- flowH2 : Flow of hydrogen to / from the tank ( > 0 if charging, < 0 if discharging) (Kg)
+- elec_grid : Electricity consumption from the grid (MWh)
+- elec_ppa : Consumption of PPA energy (MWh)
+- curtailing : Electricity curtailed (MWh)
+- flow_bat : Flow of energy to / from the battery ( > 0 if charging, < 0 if discharging) (MWh)
+- flow_H2 : Flow of hydrogen to / from the tank ( > 0 if charging, < 0 if discharging) (Kg)
 - operating_cost : Operating cost (€)
 - storage_cost : Construction cost of the storage (€)
 - electrolyser_cost : Construction cost of the electrolyzer (€)
@@ -53,12 +56,12 @@ function solve(
     ;
     wind_profile :: Array{Float64, 1},
     solar_profile :: Array{Float64, 1},
-    demand :: Union{Float64, Int},
+    demand :: Union{Float64, Int} = DEMAND,
     gurobi_env = Gurobi.Env(),
-    wind_capa = -1.,
-    solar_capa = -1.,
-    battery_capa = -1.,
-    tank_capa = -1.,
+    wind_capa = WIND_CAPA,
+    solar_capa = SOLAR_CAPA,
+    battery_capa = BATTERY_CAPA,
+    tank_capa = TANK_CAPA,
     electro_capa = -1.,
     price_grid  = PRICE_GRID,
     price_curtailing = PRICE_CURTAILING,

@@ -14,7 +14,7 @@ COST_TANK = 407. # € / Kg
 # Grid parameters
 PRICE_GRID = 1000. # € / MWh
 PRICE_CURTAILING = 500. # € / MWh;
-PRICE_PENALITY = 1 # € / kg of change in production level
+PRICE_PENALITY = 10 # € / kg of change in production level
 # Renewable pricing, from https://atb.nrel.gov/electricity/2022/index
 # For now : 20 year lifespan, no discount rate + O&M cost per year
 COST_WIND = 1352 * 1000 / 20 + 43 * 1000 # € / MW
@@ -23,7 +23,7 @@ COST_SOLAR = 1233 * 1000 / 20 + 23 * 1000 # € / MW
 YEAR = 2014;
 # CHOSEN CAPACITIES
 ELECTRO_CAPA = 1720 * EELEC # MW
-TANK_CAPA = 46878 # Kg
-BATTERY_CAPA = 600; # MWh
+TANK_CAPA = 50978 # Kg
+BATTERY_CAPA = 300; # MWh
 WIND_CAPA = 132 # MW
 SOLAR_CAPA = 196; # MW
