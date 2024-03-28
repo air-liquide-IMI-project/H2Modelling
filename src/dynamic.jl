@@ -30,7 +30,7 @@ function dynamic_solver(
     solar_train :: Array{Array{Float64, 1}},
     wind_week_gen :: Function,
     solar_week_gen :: Function,
-    n_ev_compute :: Int,
+    n_ev_compute :: Int = 1,
     states :: Array{Float64},
     initial_charge = 0.,
     verbose = false,
@@ -77,6 +77,10 @@ function dynamic_solver(
                         wind_profile = wind,
                         solar_profile = solar,
                         gurobi_env = gurobi_env,
+                        initial_charge = init_charge,
+                        final_charge = battery_charge[a, t+1],
+                        initial_stock = states[x],
+                        final_stock = states[a],
                     )
                     operating_cost = output["operating_cost"]
                     
