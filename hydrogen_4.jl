@@ -57,6 +57,7 @@ Ener_stored_bat_opt_per_group= Vector{Any}()
 Hydrogen_stored_tank_opt_per_group = Vector{Any}()
 Cost_mistake_energy_vector_per_group = Vector{Any}()
 Cost_energy_market_per_group = Vector{Any}()
+Available_surplus_PPA_per_group = Vector{Any}()
 
 # DE_price  = Float64[]
 
@@ -239,11 +240,19 @@ plot(x, Ener_Market_opt, label="Energy from PPA", xlabel="Hours", ylabel="Value 
 Unreal_PPA = [Solar_capacity*Solar_profile_vector[i] + Wind_capacity*Wind_profile_vector[i] for i in 1: Length_Demand]
 #Here we use our final-week stock constraints
 
-Number_groups = 400
+Number_groups = 1000
 
-Max_constrained_hyd_storage = Cap_max_tank_stock
+Max_constrained_hyd_storage_1 = floor(Int,Cap_max_tank_stock*0.2)
+Max_constrained_hyd_storage_2 = floor(Int,Cap_max_tank_stock*0.5)
+Max_constrained_hyd_storage_3 = Cap_max_tank_stock
 
-hydrogen_storage_matrix = rand(0:Max_constrained_hyd_storage, Number_groups, Number_weeks-1) 
+hydrogen_storage_matrix_1 = rand(0:Max_constrained_hyd_storage_1, floor(Int, Number_groups/3), Number_weeks-1)
+
+hydrogen_storage_matrix_2 = rand(0:Max_constrained_hyd_storage_2, floor(Int, Number_groups/3), Number_weeks-1) 
+
+hydrogen_storage_matrix_3 = rand(0:Max_constrained_hyd_storage_3, floor(Int, Number_groups/3) +1, Number_weeks-1) 
+
+hydrogen_storage_matrix = vcat(hydrogen_storage_matrix_1,hydrogen_storage_matrix_2, hydrogen_storage_matrix_3)
 
 
 # negative_unreal_price = [Unreal_Price[i] for i in 1:Length_Demand if Unreal_Price[i] < 0]
@@ -297,8 +306,8 @@ for group in 1:Number_groups
 
     #here we add our final constraint fo the first hour of each new week except the first one, 168 = 7days times 24 hours, so one week
 
-    for week in 2:(Number_weeks-1) # we do not constraint the last week
-        @constraint(model,hyd_stock_level[week-1] <= Hydrogen_stored_tank[168*week + 1] )
+    for week in 1:(Number_weeks-1) # we do not constraint the last week
+        @constraint(model,hyd_stock_level[week] <= Hydrogen_stored_tank[168*week + 1] )
     end
 
 
@@ -311,27 +320,50 @@ for group in 1:Number_groups
     @objective(model, Min, Cost(Ener_Market))
     optimize!(model)
     
-    push!(Ener_used_by_elec_opt_per_group, JuMP.value.(Ener_used_by_elec))
-    push!(Ener_PPA_opt_per_group, JuMP.value.(Ener_PPA))
-    push!(Ener_Market_opt_per_group, JuMP.value.(Ener_Market))
-    push!(Ener_stored_bat_opt_per_group, JuMP.value.(Ener_stored_bat))
-    push!(Hydrogen_stored_tank_opt_per_group, JuMP.value.(Hydrogen_stored_tank))
+    Ener_used_by_elec_opt_value = JuMP.value.(Ener_used_by_elec)
+    Ener_PPA_opt_value = JuMP.value.(Ener_PPA)
+    Ener_Market_opt_value = JuMP.value.(Ener_Market)
+    Ener_stored_bat_opt_value = JuMP.value.(Ener_stored_bat)
+    Hydrogen_stored_tank_opt_value = JuMP.value.(Hydrogen_stored_tank)
+    
+    push!(Ener_used_by_elec_opt_per_group, Ener_used_by_elec_opt_value)  #need to be carful when it is add to the group
+    push!(Ener_PPA_opt_per_group, Ener_PPA_opt_value )
+    push!(Ener_Market_opt_per_group, Ener_Market_opt_value)
+    push!(Ener_stored_bat_opt_per_group, Ener_stored_bat_opt_value)
+    push!(Hydrogen_stored_tank_opt_per_group, Hydrogen_stored_tank_opt_value)
 
-    #Here is one of the most important parts where we acutally transpose our predicted solution into a feasible one
-   
-    push!(Cost_mistake_energy_vector_per_group, [max(0, (Ener_PPA_opt_per_group[group][i] - PPA[i]))*Real_price_vector[i] for i in 1:Length_Demand]) 
-    push!(Cost_energy_market_per_group, [Ener_Market_opt_per_group[group][i]*Real_price_vector[i] for i in 1:Length_Demand])
+    #Here is one of the most important parts where we actually transpose our predicted solution into a feasible one
+    Cost_mistake_energy_vector_value = [max(0, (Ener_PPA_opt_value[i] - Real_PPA[i]))*Real_price_vector[i] for i in 1:Length_Demand]
+    Available_surplus_PPA_value = [max(0, Real_PPA[i]-Ener_PPA_opt_value[i]) for i in 1:Length_Demand]
 
-    Cost_mistake_energy = sum( Cost_mistake_energy_vector_per_group[group][i] for i in 1:Length_Demand)
-    Cost_real_price = sum(Cost_energy_market_per_group[group][i] for i in 1:Length_Demand) #thi part is really important for a coherent transposition
+    push!(Cost_mistake_energy_vector_per_group, [max(0, (Ener_PPA_opt_value[i] - Real_PPA[i]))*Real_price_vector[i] for i in 1:Length_Demand]) 
+    push!(Available_surplus_PPA_per_group, [max(0, Real_PPA[i]-Ener_PPA_opt_value[i]) for i in 1:Length_Demand]) # we can actually have more renewable energy than we prediced
 
-    push!(Best_cost_per_group, Cost_real_price + Cost_mistake_energy) 
+    Cost_energy_market_value = [max(0, Ener_Market_opt_value[i] - Available_surplus_PPA_value[i])*Real_price_vector[i] for i in 1:Length_Demand]
+
+    #But no change in the production plan, we just replace as much energy from the grid by renewable enregy as we can
+    push!(Cost_energy_market_per_group, [max(0, Ener_Market_opt_value[i] - Available_surplus_PPA_value[i])*Real_price_vector[i] for i in 1:Length_Demand]) 
+
+    
+
+    Cost_mistake_energy = sum( Cost_mistake_energy_vector_value[i] for i in 1:Length_Demand)
+    Cost_real_price = sum(Cost_energy_market_value[i] for i in 1:Length_Demand) 
+
+    total_cost = Cost_real_price + Cost_mistake_energy
+
+    push!(Best_cost_per_group, total_cost - Real_optimal_cost) #here we compute the difference with the optimal cost
 
 end
 # x = [Nb_test*i for i in 1:trunc(Int,Length_Demand/Nb_test)]
-
+Available_surplus_PPA_per_group
 Real_optimal_cost
-Best_cost_per_group
+argmin(Best_cost_per_group)
+
+Best_cost_per_group[656]
+Best_cost_per_group[1]
+
+
+hydrogen_storage_matrix[874,:]
 
 Hyd_stock_level
 
@@ -339,32 +371,34 @@ Cost_mistake_energy_vector_per_group
 hydrogen_storage_matrix
 Final_hyd_stock_vector
 
+
+push!(Best_cost_per_group,Real_optimal_cost)
 Ener_Market_opt_per_group
 
 x = [i for i in 1:Length_Demand + 1]
 
 x_best_cost = [ i for i in 1:length(Best_cost_per_group)]
 
-plot(x, Hydrogen_stored_tank_opt_per_group[2], label="Energy from PPA", xlabel="Hours", ylabel="Value in MW")
+plot(x, Hydrogen_stored_tank_opt_per_group[874], label="Hydrogen stored in tank", xlabel="Hours", ylabel="Value in MW")
 
-plot(x_best_cost, Best_cost_per_group)
+plot(x_best_cost, Best_cost_per_group,label="Best_cost with constrained level of hydrogen", xlabel="groups", ylabel="Value in €")
 Optimal_cost_hyd_storage = hcat(Best_cost_per_group, hydrogen_storage_matrix)
 
 week_names = String["Optimal_Cost"]
 
 # Generate week names and append them to the array
-for i in 1:Nb_weeks
+for i in 1:(Number_weeks-1)
     push!(week_names, "Week_$i")
 end
 
 week_names
 
 final_hyd_stock
-column_names = ["Optimal_Cost", "Week1", "Week2", "Week3", ""]
+column_names = ["Optimal_Cost", "Week1", "Week2", "Week3", "Week4"]
 
 df = DataFrame(Optimal_cost_hyd_storage, Symbol.(week_names))
 
-CSV.write("Optimal_cost_hyd_storage.csv", df)
+CSV.write("Optimal_cost_hyd_storage_transposition_diversified_stock.csv", df)
 
 
 
