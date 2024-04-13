@@ -19,6 +19,8 @@ using Random
 using CSV
 using DataFrames
 
+
+Random.seed!(3) # we will use this to have reproductibility through the prediction
 db = SQLite.DB(raw"DE_data.sqlite")
 
 
@@ -101,7 +103,7 @@ Year_to_pick = [year for year in Different_years if year!=2014.0]
 Year_picked = Year_to_pick[rand(1:length(Year_to_pick), Number_weeks-1)]
 
 week_to_pick = [i for i in Index_first_week+1 : Index_first_week + Number_weeks-1]
-
+week_to_pick
 
 push!(Index_vector, [j for j in 1:length(DE_price) if week_index[j] == Index_first_week && year_index[j] == Chosen_Year])
 Year_picked
@@ -240,26 +242,30 @@ plot(x, Ener_Market_opt, label="Energy from PPA", xlabel="Hours", ylabel="Value 
 Unreal_PPA = [Solar_capacity*Solar_profile_vector[i] + Wind_capacity*Wind_profile_vector[i] for i in 1: Length_Demand]
 #Here we use our final-week stock constraints
 
-Number_groups = 1000
+Number_groups = 400
 
 Max_constrained_hyd_storage_1 = floor(Int,Cap_max_tank_stock*0.2)
 Max_constrained_hyd_storage_2 = floor(Int,Cap_max_tank_stock*0.5)
 Max_constrained_hyd_storage_3 = Cap_max_tank_stock
 
+
+hydrogen_storage_matrix_initial_optimal_heuristic = [ 14426 2452 1023 8377]
+
+
 hydrogen_storage_matrix_1 = rand(0:Max_constrained_hyd_storage_1, floor(Int, Number_groups/3), Number_weeks-1)
 
 hydrogen_storage_matrix_2 = rand(0:Max_constrained_hyd_storage_2, floor(Int, Number_groups/3), Number_weeks-1) 
 
-hydrogen_storage_matrix_3 = rand(0:Max_constrained_hyd_storage_3, floor(Int, Number_groups/3) +1, Number_weeks-1) 
+hydrogen_storage_matrix_3 = rand(0:Max_constrained_hyd_storage_3, floor(Int, Number_groups/3) , Number_weeks-1) 
 
-hydrogen_storage_matrix = vcat(hydrogen_storage_matrix_1,hydrogen_storage_matrix_2, hydrogen_storage_matrix_3)
+hydrogen_storage_matrix = vcat(hydrogen_storage_matrix_initial_optimal_heuristic, hydrogen_storage_matrix_1,hydrogen_storage_matrix_2, hydrogen_storage_matrix_3)
 
 
 # negative_unreal_price = [Unreal_Price[i] for i in 1:Length_Demand if Unreal_Price[i] < 0]
 
 # negative_price = [Real_price_vector[i] for i in 1:Length_Demand if Real_price_vector[i] < 0]
 
-hydrogen_storage_matrix[1, :] =[0 for i in 1:(Number_weeks-1)] # this acutally means that we do not constraint the final level of hydrogen
+hydrogen_storage_matrix[2, :] =[0 for i in 1:(Number_weeks-1)] # this acutally means that we do not constraint the final level of hydrogen
 for group in 1:Number_groups
 #we do not constrained the final stock of the last week
 
@@ -351,7 +357,7 @@ for group in 1:Number_groups
 
     total_cost = Cost_real_price + Cost_mistake_energy
 
-    push!(Best_cost_per_group, total_cost - Real_optimal_cost) #here we compute the difference with the optimal cost
+    push!(Best_cost_per_group, total_cost) #actually here we do not compute anymore the difference with the real optimal cost
 
 end
 # x = [Nb_test*i for i in 1:trunc(Int,Length_Demand/Nb_test)]
@@ -394,11 +400,11 @@ end
 week_names
 
 final_hyd_stock
-column_names = ["Optimal_Cost", "Week1", "Week2", "Week3", "Week4"]
+
 
 df = DataFrame(Optimal_cost_hyd_storage, Symbol.(week_names))
 
-CSV.write("Optimal_cost_hyd_storage_transposition_diversified_stock.csv", df)
+CSV.write("Optimal_cost_hyd_storage_transposition_heuristic_stock.csv", df)
 
 
 
