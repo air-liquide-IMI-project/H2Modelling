@@ -2,12 +2,13 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense
+from tensorflow.keras.models import Sequential, load_model
+from tensorflow.keras.layers import LSTM, Dense, Dropout
 from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.optimizers import Adam
 
 # Charger les données
-column_name = 'DE_wind_generation_actual'
+column_name = 'DE_solar_generation_actual'
 whole_data = pd.read_csv('time_series_60min_singleindex.csv', parse_dates=['utc_timestamp'], index_col='utc_timestamp')
 wind_generation = whole_data[column_name].interpolate(method='linear')
 
@@ -20,7 +21,6 @@ wind_generation = wind_generation.values.reshape(-1, 1)
 scaler = MinMaxScaler()
 wind_generation_scaled = scaler.fit_transform(wind_generation)
 
-
 # Préparer les données pour l'apprentissage supervisé
 def prepare_data(data, time_steps):
     X, y = [], []
@@ -29,7 +29,7 @@ def prepare_data(data, time_steps):
         y.append(data[i + time_steps, 0])
     return np.array(X), np.array(y)
 
-time_steps = 24  # Nombre d'heures à utiliser pour prédire l'heure suivante
+time_steps = 2*24  # Nombre d'heures à utiliser pour prédire l'heure suivante
 X, y = prepare_data(wind_generation_scaled, time_steps)
 
 # Diviser les données en ensembles d'entraînement et de test
@@ -43,29 +43,38 @@ X_test = X_test.reshape((X_test.shape[0], X_test.shape[1], 1))
 
 # Créer le modèle LSTM
 model = Sequential()
-model.add(LSTM(units=50, return_sequences=True, input_shape=(time_steps, 1)))
-model.add(LSTM(units=50))
-model.add(Dense(units=1))
-model.compile(optimizer='adam', loss='mean_squared_error')
+model.add(LSTM(units=64, return_sequences=True, input_shape=(time_steps, 1)))
+model.add(Dropout(0.2))
+
+model.add(LSTM(units=64, return_sequences=True))
+model.add(Dropout(0.2))
+
+model.add(LSTM(units=64))
+model.add(Dropout(0.2))
+
+# Output layer
+model.add(Dense(units=1, activation='linear'))
+
+optimizer = Adam(learning_rate=0.001)
+model.compile(optimizer=optimizer, loss='mean_squared_error')
 
 # Entraîner le modèle
 early_stopping = EarlyStopping(patience=5, restore_best_weights=True)
 history = model.fit(X_train, y_train, epochs=3, batch_size=32, validation_split=0.1, callbacks=[early_stopping], verbose=1)
 
-# Évaluer le modèle
+# Sauvegarder le modèle
+model.save('wind_generation_lstm_model.h5')
+
+# Évaluer le modèle chargé
 train_loss = model.evaluate(X_train, y_train, verbose=0)
 test_loss = model.evaluate(X_test, y_test, verbose=0)
 print(f'Train Loss: {train_loss:.6f}')
 print(f'Test Loss: {test_loss:.6f}')
 
-# Faire des prédictions
-# train_predictions = model.predict(X_train)
+# Faire des prédictions avec le modèle chargé
 test_predictions = model.predict(X_test)
-# print("Test Predictions:", test_predictions)
 
 # Inverser la transformation pour obtenir les vraies valeurs
-# train_predictions = scaler.inverse_transform(train_predictions)
-# y_train = scaler.inverse_transform([y_train])
 test_predictions = scaler.inverse_transform(test_predictions)
 y_test = scaler.inverse_transform([y_test])
 

@@ -1,0 +1,143 @@
+50 units, 2 epochs:
+
+1*24 :
+Train Loss: 0.005808
+Test Loss: 0.009828
+
+2*24:
+Train Loss: 0.005992
+Test Loss: 0.009820
+
+3*24:
+Train Loss: 0.005503
+Test Loss: 0.008467
+
+40, 60, 80 units:
+Train Loss: 0.005515
+Test Loss: 0.008868
+
+40, 40, 60 units:
+Train Loss: 0.005454
+Test Loss: 0.008770
+
+40, 30, 80 units:
+Train Loss: 0.005373
+Test Loss: 0.008768
+
+4*24:
+Train Loss: 0.005592
+Test Loss: 0.009077
+
+5*24:
+50, 50, 50 units:
+Train Loss: 0.005531
+Test Loss: 0.008524
+
+50, 50, 50 units, 1 epoch, batch_size 16:
+Train Loss: 0.005721
+Test Loss: 0.008414
+
+60, 40, 60 units, 2 epochs:
+Train Loss: 0.005852
+Test Loss: 0.009136
+
+50, 30, 50, 1 epoch, batch_size 16:
+Train Loss: 0.005886
+Test Loss: 0.009104
+
+60, 60, 60 units:
+Train Loss: 0.005701
+Test Loss: 0.008520
+
+60, 60, 60 units, 1 epoch, batch_size 16:
+Train Loss: 0.005625
+Test Loss: 0.008902
+
+60, 60, 60 units, 1 epoch, batch_size 32:
+Train Loss: 0.006455
+Test Loss: 0.010477
+
+6*24:
+Train Loss: 0.005748
+Test Loss: 0.009192
+
+
+80, 50, 80 units, 2 epochs:
+Train Loss: 0.005622
+Test Loss: 0.007633
+
+Train Loss: 0.005780
+Test Loss: 0.008296
+
+80, 50, 80 units, 0.3 dropout, 2 epochs:
+Train Loss: 0.005331
+Test Loss: 0.007913
+
+80, 50, 80 units, 0.1 dropout, 2 epochs:
+Train Loss: 0.006226
+Test Loss: 0.010494
+
+80, 50, 80 units, 0.4 dropout, 2 epochs:
+Train Loss: 0.006360
+Test Loss: 0.009589
+
+80, 50, 80 units, 1 epoch, batch_size 16:
+Train Loss: 0.005712
+Test Loss: 0.009021
+
+80, 50, 80 units, 2 epochs, batch_size 16:
+Train Loss: 0.005321
+Test Loss: 0.008440
+
+80, 50, 80 units, 2 epochs, batch_size 64:
+Train Loss: 0.005605
+Test Loss: 0.008725
+
+80, 50, 90 units:
+Train Loss: 0.005780
+Test Loss: 0.010005
+
+80, 50, 70 units:
+Train Loss: 0.006219
+Test Loss: 0.010098
+
+80, 40, 80 units:
+Train Loss: 0.005588
+Test Loss: 0.008877
+
+70, 50, 80 units:
+Train Loss: 0.005857
+Test Loss: 0.009510
+
+70, 50, 80 units, 1 epoch:
+Train Loss: 0.005830
+Test Loss: 0.008132
+
+90, 50, 80 units:
+Train Loss: 0.005516
+Test Loss: 0.009252
+
+80, 70, 80 units:
+Train Loss: 0.005488
+Test Loss: 0.008959
+
+80, 80, 80 units, 2 epochs:
+Train Loss: 0.005440
+Test Loss: 0.007881
+
+7*24:
+80, 50, 80 units, 2 epochs:
+Train Loss: 0.005959
+Test Loss: 0.009469
+
+90, 60, 90 units, 2 epochs:
+Train Loss: 0.005448
+Test Loss: 0.008201
+
+100, 60, 100 units, 2 epochs:
+Train Loss: 0.005852
+Test Loss: 0.009084
+
+100, 60, 100 units, 1 epoch:
+Train Loss: 0.005974
+Test Loss: 0.008412

@@ -5,21 +5,24 @@ from statsmodels.tsa.arima.model import ARIMA
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 
 # The data that we want to analyse
-column_name = 'DE_wind_generation_actual'
+column_name = 'DE_solar_generation_actual'
 
 # Générer un exemple de série temporelle aléatoire (remplacez cette partie par le chargement de votre propre série temporelle)
 whole_data = pd.read_csv('time_series_60min_singleindex.csv', parse_dates=['utc_timestamp'], index_col='utc_timestamp')
 solar_generation = whole_data[column_name]
 solar_generation = solar_generation.interpolate(method='linear')
 
+# Remove infinite values
+solar_generation = solar_generation.replace([np.inf, -np.inf], np.nan).dropna()
+
 # Tracer la série temporelle
-plt.figure(figsize=(12, 6))
-plt.plot(solar_generation.index, solar_generation, color='blue')
-plt.title('Production d\'énergie solaire')
-plt.xlabel('Date')
-plt.ylabel('Production solaire')
-plt.grid(True)
-plt.show()
+# plt.figure(figsize=(12, 6))
+# plt.plot(solar_generation.index, solar_generation, color='blue')
+# plt.title('Production d\'énergie solaire')
+# plt.xlabel('Date')
+# plt.ylabel('Production solaire')
+# plt.grid(True)
+# plt.show()
 
 
 # Analyse de la série temporelle
@@ -34,19 +37,22 @@ plt.show()
 
 # Déterminer les ordres (p, d, q) pour ARIMA
 # Choisissez les ordres en fonction des graphiques ACF et PACF ainsi que des tests statistiques
-p = 1  # Ordre de la partie autorégressive
+
+p = 3  # Ordre de la partie autorégressive
 d = 1  # Ordre de la différenciation
-q = 1  # Ordre de la moyenne mobile
+q = 3  # Ordre de la moyenne mobile
+
+train_size = int(len(solar_generation) * 0.8)
 
 # Créer et ajuster le modèle ARIMA
-model = ARIMA(solar_generation, order=(p, d, q))
+model = ARIMA(solar_generation[:train_size], order=(p, d, q))
 arima_results = model.fit()
 
 # Résumé des résultats du modèle
 print(arima_results.summary())
 
-start_index = 500
-end_index = 600
+start_index = train_size-100
+end_index = train_size
 
 actual_data = solar_generation.iloc[start_index:end_index]
 arima_predictions = arima_results.predict(start=start_index, end=end_index-1)
