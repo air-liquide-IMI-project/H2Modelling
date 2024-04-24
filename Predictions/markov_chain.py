@@ -24,8 +24,8 @@ transition_matrix = transition_matrix.fillna(0)
 # Convert to numpy array
 transition_matrix = transition_matrix.to_numpy()
 
-print("Transition Matrix:")
-print(transition_matrix)
+# Save the matrix to a CSV file
+np.savetxt('transition_matrix.csv', transition_matrix, delimiter=',', fmt='%d')
 
 # Define the number of time steps
 num_steps = 40
