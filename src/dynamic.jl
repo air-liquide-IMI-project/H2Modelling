@@ -36,6 +36,7 @@ function dynamic_solver(
     verbose = false,
 )
     gurobi_env = Gurobi.Env()
+    println("Using $(Threads.nthreads()) threads")
     # Initialisation
     N = length(states)
     V = zeros(Float64, N, T+1)
@@ -45,7 +46,7 @@ function dynamic_solver(
     # prod_level[x, t] is the production level at the beginning of week t if the stock is x
     # This is to take into account the production change penality cost when changing time period
     prod_level = zeros(Float64, N, T)
-    # Main loop, backward induction
+    # Main loop, backward 
     for t in T:-1:1
         if verbose
             println("Week ", t)
@@ -57,7 +58,9 @@ function dynamic_solver(
             init_charge = -1.
         end
         # Loop over the possible states at the beginning week t
-        for x in 1:N
+        # Use parallel for loop to speed up the computation
+        chunks = Iterators.partition(1:N, Threads.nthreads())
+        Threads.@threads for x in 1:N
             best_cost = Inf
             # Enumerate the possible actions
             # Here an action is the choice of the final stock at the end of the week
