@@ -1,4 +1,4 @@
-using CSV
+using CSV, DataFrames
 
 # Read the transition matrix from the CSV file
 transition_matrix = CSV.read("transition_matrix.csv", DataFrame)
