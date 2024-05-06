@@ -8,7 +8,7 @@ function generate_period_from_day(
     wind_train :: Array{Array{Float64, 1}},
     k :: Int = 1,
     period_length :: Int = 24,
-    around :: Int = 5
+    around :: Int = 10
 )
     # Check that the period length is a multiple of 24
     if period_length % 24 != 0
@@ -21,10 +21,14 @@ function generate_period_from_day(
     year = 0
     possible_indexes = []
     while year * length_one_year_train < length(wind_train)
-        for j in -around:around
-            index = Int(year * length_one_year_train + t + j)
-            if index > 0 && index <= length(wind_train)
-                push!(possible_indexes, index)
+        if around == 0
+            push!(possible_indexes, Int(year * length_one_year_train + t))
+        else
+            for j in -around:around
+                index = Int(year * length_one_year_train + t + j)
+                if index > 0 && index <= length(wind_train)
+                    push!(possible_indexes, index)
+                end
             end
         end
         year += 1
