@@ -26,10 +26,10 @@ include("./constants.jl")
 """
 function dynamic_solver(
     T :: Int;
+    period_length :: Int,
     wind_train :: Array{Array{Float64, 1}},
     solar_train :: Array{Array{Float64, 1}},
-    wind_week_gen :: Function,
-    solar_week_gen :: Function,
+    profiles_generator :: Function,
     n_ev_compute :: Int = 1,
     states :: Array{Float64},
     initial_charge = 0.,
@@ -49,7 +49,7 @@ function dynamic_solver(
     # Main loop, backward 
     for t in T:-1:1
         if verbose
-            println("Week ", t)
+            println("Period ", t)
         end
         # Initial charge of the battery, only constrain the first week
         if t == 1
@@ -59,19 +59,28 @@ function dynamic_solver(
         end
         # Loop over the possible states at the beginning week t
         # Use parallel for loop to speed up the computation
-        chunks = Iterators.partition(1:N, Threads.nthreads())
         Threads.@threads for x in 1:N
             best_cost = Inf
             # Enumerate the possible actions
             # Here an action is the choice of the final stock at the end of the week
+            # Only iterate through the reachable states
+            # This is because in the span of one day, we can't fully empty the tank for instance
+            # Or we can't fully fill the tank
+            reachable_states = []
             for a in 1:N
-                possible_wind = wind_week_gen(t, wind_train, n_ev_compute)
-                possible_solar = solar_week_gen(t, solar_train, n_ev_compute)
-                # Compute the expected cost of the policy
-                expect_cost = 0.
-                # Also compute the "expected" battery charge and production level
-                expect_bat = 0.
-                expect_prod = 0.
+                is_reachable = abs(states[a] - states[x]) <= DEMAND * period_length # Can we empty the tank sufficiently ?
+                is_reachable &= abs(states[a] - states[x]) <= ELECTRO_CAPA / EELEC * period_length # Can we fill the tank sufficiently ?
+                if is_reachable
+                    push!(reachable_states, a)
+                end
+            end
+            for a in reachable_states
+                possible_wind = profiles_generator(t, wind_train, n_ev_compute, period_length)
+                possible_solar = profiles_generator(t, solar_train, n_ev_compute, period_length)
+                # Compute the costs and corresponding charge and production level for each action
+                cost_per_profile = zeros(Float64, n_ev_compute)
+                bat_level_per_profile = zeros(Float64, n_ev_compute)
+                prod_level_per_profile = zeros(Float64, n_ev_compute)
                 for i in 1:n_ev_compute
                     wind = possible_wind[i]
                     solar = possible_solar[i]
@@ -86,18 +95,21 @@ function dynamic_solver(
                         final_stock = states[a],
                     )
                     operating_cost = output["operating_cost"]
-                    
                     # Add the production change penality cost at every beginning of week (not computed by the milp solver)
                     if t < T
                         operating_cost += PRICE_PENALITY * abs(prod_level[a, t+1] - output["prod"][end])
                     end
-                    expect_cost += (1/n_ev_compute) * (operating_cost + V[a, t+1])
-                    expect_bat += (1/n_ev_compute) * output["charge"][1]
-                    expect_prod += (1/n_ev_compute) * output["prod"][1]
+                    cost_per_profile[i] = operating_cost + V[a, t+1]
+                    bat_level_per_profile[i] = output["charge"][1]
+                    prod_level_per_profile[i] = output["prod"][1]
                 end
-                # Update the best action
-                if expect_cost < best_cost
-                    best_cost = expect_cost
+                # Compute the cost of taking this action
+                cost_action = mean(cost_per_profile)
+                expect_bat = mean(bat_level_per_profile)
+                expect_prod = mean(prod_level_per_profile)
+                # Update the best cost and policy
+                if cost_action < best_cost
+                    best_cost = cost_action
                     policy[x, t] = a
                     V[x, t] = best_cost
                     battery_charge[x, t] = expect_bat

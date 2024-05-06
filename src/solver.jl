@@ -190,6 +190,15 @@ function solve(
     end
     optimize!(model)
 
+    # Check the status of the model
+    if termination_status(model) != MOI.OPTIMAL
+        println("The model was not solved to optimality")
+        println("Initial charge: ", initial_charge)
+        println("Initial stock: ", initial_stock)
+        println("Final charge: ", final_charge)
+        println("Final stock: ", final_stock)
+    end
+
     return Dict(
         "wind_capa" => value.(wind_capa),
         "solar_capa" => value.(solar_capa),

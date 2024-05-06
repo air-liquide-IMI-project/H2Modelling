@@ -155,7 +155,7 @@ end
 
 """
 Simulate the functionning of the system week by week, without using any policy
-(only using continuous stocks at the end of each week)
+(only imposing continuous stocks at the end of each week)
 """
 function simulator_no_policy(
     ;
