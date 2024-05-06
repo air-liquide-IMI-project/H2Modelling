@@ -1,4 +1,4 @@
-using JuMP, Gurobi, HiGHS
+using JuMP, Gurobi
 include("constants.jl")
 
 
@@ -54,33 +54,33 @@ Solve the MILP problem for the hydrogen production and storage.
 """
 function solve(
     ;
-    wind_profile :: Array{Float64, 1},
-    solar_profile :: Array{Float64, 1},
-    demand :: Union{Float64, Int} = DEMAND,
-    gurobi_env = Gurobi.Env(),
-    wind_capa = WIND_CAPA,
-    solar_capa = SOLAR_CAPA,
-    battery_capa = BATTERY_CAPA,
-    tank_capa = TANK_CAPA,
-    electro_capa = -1.,
-    price_grid  = PRICE_GRID,
-    price_curtailing = PRICE_CURTAILING,
-    price_penality = PRICE_PENALITY, # Price for changing the production, per Kg of change.
-    capa_bat_upper = CAPA_ELEC_UPPER, # Upper bound for the electrolyzer capacity
-    capa_elec_upper = CAPA_BAT_UPPER, # Upper bound for the battery capacity
-    ebat = EBAT,
-    fbat = FBAT,
-    eelec = EELEC,
-    cost_elec = COST_ELEC,
-    cost_bat = COST_BAT,
-    cost_tank = COST_TANK,
-    cost_wind = COST_WIND,
-    cost_solar = COST_SOLAR,
-    initial_charge =  -1.,
-    initial_stock = -1.,
-    final_charge = -1.,
-    final_stock = -1.,
-    verbose :: Bool = false,
+    wind_profile::Array{Float64,1},
+    solar_profile::Array{Float64,1},
+    demand::Union{Float64,Int}=DEMAND,
+    gurobi_env=Gurobi.Env(),
+    wind_capa=WIND_CAPA,
+    solar_capa=SOLAR_CAPA,
+    battery_capa=BATTERY_CAPA,
+    tank_capa=TANK_CAPA,
+    electro_capa=-1.0,
+    price_grid=PRICE_GRID,
+    price_curtailing=PRICE_CURTAILING,
+    price_penality=PRICE_PENALITY, # Price for changing the production, per Kg of change.
+    capa_bat_upper=CAPA_ELEC_UPPER, # Upper bound for the electrolyzer capacity
+    capa_elec_upper=CAPA_BAT_UPPER, # Upper bound for the battery capacity
+    ebat=EBAT,
+    fbat=FBAT,
+    eelec=EELEC,
+    cost_elec=COST_ELEC,
+    cost_bat=COST_BAT,
+    cost_tank=COST_TANK,
+    cost_wind=COST_WIND,
+    cost_solar=COST_SOLAR,
+    initial_charge=-1.0,
+    initial_stock=-1.0,
+    final_charge=-1.0,
+    final_stock=-1.0,
+    verbose::Bool=false,
 )
     # Number of time steps
     T = length(wind_profile)
@@ -90,34 +90,34 @@ function solve(
     # Create the model
     model = Model(() -> Gurobi.Optimizer(gurobi_env))
     set_silent(model)
-    
+
     if verbose
         println("Adding variables ...")
     end
     # Potential variables
     if wind_capa < 0
-        wind_capa = @variable(model, lower_bound = 0.)
+        wind_capa = @variable(model, lower_bound = 0.0)
     end
     if solar_capa < 0
-        solar_capa = @variable(model, lower_bound = 0.)
+        solar_capa = @variable(model, lower_bound = 0.0)
     end
     if battery_capa < 0
-        battery_capa = @variable(model, lower_bound = 0., upper_bound = capa_bat_upper)
+        battery_capa = @variable(model, lower_bound = 0.0, upper_bound = capa_bat_upper)
     end
     if tank_capa < 0
-        tank_capa = @variable(model, lower_bound = 0.)
+        tank_capa = @variable(model, lower_bound = 0.0)
     end
     if electro_capa < 0
-        electro_capa = @variable(model, lower_bound = 0., upper_bound = capa_elec_upper)
+        electro_capa = @variable(model, lower_bound = 0.0, upper_bound = capa_elec_upper)
     end
     # Main variables
-    charge = @variable(model, [1:T+1], lower_bound = 0.)
-    stock = @variable(model, [1:T+1], lower_bound = 0.)
-    prod = @variable(model, [1:T], lower_bound = 0.)
+    charge = @variable(model, [1:T+1], lower_bound = 0.0)
+    stock = @variable(model, [1:T+1], lower_bound = 0.0)
+    prod = @variable(model, [1:T], lower_bound = 0.0)
     # Electricity consumption
-    elecPPA = @variable(model, [1:T], lower_bound = 0.)
-    elecGrid = @variable(model, [1:T], lower_bound = 0.)
-    curtailing = @variable(model, [1:T], lower_bound = 0.)
+    elecPPA = @variable(model, [1:T], lower_bound = 0.0)
+    elecGrid = @variable(model, [1:T], lower_bound = 0.0)
+    curtailing = @variable(model, [1:T], lower_bound = 0.0)
     # Flow of elecricity / hydrogen
     flowBat = @variable(model, [1:T])
     flowH2 = @variable(model, [1:T])
@@ -153,7 +153,7 @@ function solve(
         @constraint(model, stock[T+1] == final_stock)
     end
     # Get the per hour discharge of the batteryn from the per month parameter
-    perHourDischarge = ebat ^ (1 / (30 * 24))
+    perHourDischarge = ebat^(1 / (30 * 24))
     # PPA contract
     @constraint(model, [t ∈ 1:T], elecPPA[t] == wind_profile[t] * wind_capa + solar_profile[t] * solar_capa)
     # Demand satisfaction

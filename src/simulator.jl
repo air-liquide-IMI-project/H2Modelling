@@ -151,3 +151,66 @@ function optimal(
         "operating_cost" => output["operating_cost"]
     )
 end
+
+
+"""
+Simulate the functionning of the system week by week, without using any policy
+(only using continuous stocks at the end of each week)
+"""
+function simulator_no_policy(
+    ;
+    solar_val,
+    wind_val,
+    states :: Array{Float64},
+    initial_charge = 0.,
+    initial_stock = states[1],
+)
+    T = length(wind_val)
+    gurobi_env = Gurobi.Env()
+    # Initialisation
+    running_cost = 0.
+    prod, charge, stock = [], [], []
+    elec_ppa, elec_grid, curtailing = [], [], []
+    current_stock = initial_stock
+    current_charge = initial_charge
+    # Main loop 
+    for t in 1:T
+        output = solve(
+            wind_profile = wind_val[t],
+            solar_profile = solar_val[t],
+            initial_charge = current_charge,
+            initial_stock = current_stock,
+            final_charge = -1.,
+            final_stock = -1,
+            gurobi_env = gurobi_env,
+            verbose = false
+        )
+        # Update the state
+        current_stock = output["stock"][end]
+        current_charge = output["charge"][end]
+        # Update the costs
+        running_cost += output["operating_cost"]
+        # Add the production change penality cost at every beginning of week (not computed by the milp solver)
+        if t > 1
+            running_cost += PRICE_PENALITY * abs(prod[end] - output["prod"][1])
+        end
+        # Update the outputs
+        append!(prod, output["prod"])
+        append!(charge, output["charge"][Not(end)])
+        append!(stock, output["stock"][Not(end)])
+        append!(elec_ppa, output["elec_ppa"])
+        append!(elec_grid, output["elec_grid"])
+        append!(curtailing, output["curtailing"])
+    end
+
+    return Dict(
+        "cost" => running_cost,
+        "prod" => prod,
+        "charge" => charge,
+        "stock" => stock,
+        "elec_ppa" => elec_ppa,
+        "elec_grid" => elec_grid,
+        "curtailing" => curtailing
+    )
+
+end
