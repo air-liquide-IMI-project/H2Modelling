@@ -134,3 +134,68 @@ function classify_uniform_distribution(
 
     return probs, classes_train, classes_val
 end
+
+using Clustering, LinearAlgebra
+
+"""
+Classify the available energy profiles using a k-means algorithm
+"""
+function classify_kmeans(
+    wind_by_periods_train :: Vector{Vector{Float64}},
+    solar_by_periods_train :: Vector{Vector{Float64}},
+    wind_by_periods_val :: Vector{Vector{Float64}},
+    solar_by_periods_val :: Vector{Vector{Float64}},
+    k::Int
+    )
+    n = length(wind_by_periods_train)
+    # Compute the energy available at each time period_length
+    energy_available_train = [
+        wind_by_periods_train[i] * WIND_CAPA + solar_by_periods_train[i] * SOLAR_CAPA
+        for i in 1:n
+    ]
+    # Put the data in the shape expected by the k-means algorithm
+    data = hcat(energy_available_train...)
+    println("Shape of the data", size(data))
+
+    # Run the k-means algorithm
+    results = kmeans(data, k)
+
+    # Compute the classes
+    classes_train = assignments(results)
+    classes_train_count = counts(results)
+    
+    # Compute the probabilities
+    probas = classes_train_count / n
+
+    ## Compute the classes on the validation data
+    # i.e. make a prediction
+    # First, put the centers in a matrix, each column is  a center
+    cluster_centers = results.centers
+    
+    # Then, for each data point in the validation set, compute the closest center
+    n_val = length(wind_by_periods_val)
+    energy_available_val = [
+        wind_by_periods_val[i] * WIND_CAPA + solar_by_periods_val[i] * SOLAR_CAPA
+        for i in 1:n_val
+    ]
+    classes_val = zeros(Int, n_val)
+
+    # We need to treat the last profile separately, because it might not be of full length
+    for i in 1:n_val-1
+        # Compute the distances from this profile to the centers
+        distances = [norm(energy_available_val[i] - cluster_centers[:, j]) for j in 1:k]
+        best_class = argmin(distances)
+        classes_val[i] = best_class
+    end
+
+    # Compute the last distance by padding with the mean of the last profile 
+    missing_length = size(data, 1) - length(energy_available_val[end])
+    mean_last_profile = mean(energy_available_val[end])
+    last_profile_paddes = append!(energy_available_val[end], ones(missing_length) * mean_last_profile)
+    distances = [norm(last_profile_paddes - cluster_centers[:, j]) for j in 1:k]
+    best_class = argmin(distances)
+    classes_val[end] = best_class
+
+    return probas, classes_train, classes_val
+end
+    
