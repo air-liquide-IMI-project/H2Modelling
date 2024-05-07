@@ -9,6 +9,7 @@ Computes the true cost of the policy over the validation period
 ## parameters:
 - solar_val : solar profiles over the validation period
 - wind_val : wind profiles over the validation period
+- classes_val : classes of the validation profiles
 - states : possible states of the system
 - policy : policy[x, t] is the index of the action to take at time t if the state index is x
 - initial_charge : initial charge of the battery
@@ -28,6 +29,7 @@ function simulator(
     ;
     solar_val,
     wind_val,
+    classes_val,
     states :: Array{Float64},
     policy :: Array{Int},
     initial_charge = 0.,
@@ -45,8 +47,10 @@ function simulator(
     index_current_stock = findfirst(states .== current_stock)
     # Main loop 
     for t in 1:T
+        # Get the class of the current period
+        current_class = classes_val[t]
         # Get the action
-        action = policy[index_current_stock, t]
+        action = policy[index_current_stock, current_class, t]
         if verbose
             println("Week ", t)
         end
