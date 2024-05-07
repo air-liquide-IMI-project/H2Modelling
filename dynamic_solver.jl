@@ -26,7 +26,7 @@ include("src/classifier.jl")
 filename = "data/profiles.csv";
 
 # +
-period_length = 48;
+period_length = 72;
 
 load_new = true;
 
@@ -74,7 +74,7 @@ print("Validation data: ", length(wind_val)," periods of ", period_length, " hou
 N_STATES = 10 # States in tenth of the tank capacity
 states = [(i / N_STATES) * TANK_CAPA for i in 0:N_STATES];
 # Number of weeks used for the computation of the expected values
-N_EV = 50;
+N_EV = 10;
 
 V, policy = dynamic_solver(
     T,

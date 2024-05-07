@@ -38,7 +38,7 @@ function dynamic_solver(
     initial_charge = 0.,
     verbose = false,
 )
-    gurobi_env = Gurobi.Env()
+    #gurobi_env = Gurobi.Env()
     println("Using $(Threads.nthreads()) threads")
     # Initialisation
     N = length(states)
@@ -102,7 +102,6 @@ function dynamic_solver(
                         output = solve(
                             wind_profile = wind,
                             solar_profile = solar,
-                            gurobi_env = gurobi_env,
                             initial_charge = init_charge,
                             final_charge = final_charge,
                             initial_stock = states[x],

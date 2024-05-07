@@ -37,7 +37,6 @@ function simulator(
     verbose = false
 )
     T = length(wind_val)
-    gurobi_env = Gurobi.Env()
     # Initialisation
     running_cost = 0.
     prod, charge, stock = [], [], []
@@ -61,7 +60,6 @@ function simulator(
             initial_stock = current_stock,
             final_charge = -1.,
             final_stock = states[action],
-            gurobi_env = gurobi_env,
             verbose = false
         )
         # Update the state
@@ -170,7 +168,6 @@ function simulator_no_policy(
     initial_stock = states[1],
 )
     T = length(wind_val)
-    gurobi_env = Gurobi.Env()
     # Initialisation
     running_cost = 0.
     prod, charge, stock = [], [], []
@@ -186,7 +183,6 @@ function simulator_no_policy(
             initial_stock = current_stock,
             final_charge = -1.,
             final_stock = -1,
-            gurobi_env = gurobi_env,
             verbose = false
         )
         # Update the state

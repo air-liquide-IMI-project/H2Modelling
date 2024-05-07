@@ -57,7 +57,6 @@ function solve(
     wind_profile::Array{Float64,1},
     solar_profile::Array{Float64,1},
     demand::Union{Float64,Int}=DEMAND,
-    gurobi_env=Gurobi.Env(),
     wind_capa=WIND_CAPA,
     solar_capa=SOLAR_CAPA,
     battery_capa=BATTERY_CAPA,
@@ -87,6 +86,10 @@ function solve(
     if length(solar_profile) != T
         throw(ArgumentError("The length of the solar profile should be equal to the length of the wind profile"))
     end
+    # Create the gurobi environment
+    gurobi_env = Gurobi.Env(
+        output_flag = 0
+    )
     # Create the model
     model = Model(() -> Gurobi.Optimizer(gurobi_env))
     set_silent(model)
