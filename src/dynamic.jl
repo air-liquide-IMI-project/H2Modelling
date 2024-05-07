@@ -99,12 +99,12 @@ function dynamic_solver(
                     if t < T
                         operating_cost += PRICE_PENALITY * abs(prod_level[a, t+1] - output["prod"][end])
                     end
-                    cost_per_profile[i] = operating_cost + V[a, t+1]
+                    cost_per_profile[i] = operating_cost
                     bat_level_per_profile[i] = output["charge"][1]
                     prod_level_per_profile[i] = output["prod"][1]
                 end
                 # Compute the cost of taking this action
-                cost_action = mean(cost_per_profile)
+                cost_action = maximum(cost_per_profile) + V[a, t+1]
                 expect_bat = mean(bat_level_per_profile)
                 expect_prod = mean(prod_level_per_profile)
                 # Update the best cost and policy
