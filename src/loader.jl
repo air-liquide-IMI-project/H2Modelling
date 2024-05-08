@@ -105,6 +105,12 @@ function load_by_periods(filename, period_length = 7*24;
         push!(time_by_periods, subData[!, "utc_timestamp"])
         # If some data are missing,
     end
+    # Remove the last period if it is not complete
+    if length(wind_by_periods[end]) != period_length
+        pop!(wind_by_periods)
+        pop!(solar_by_periods)
+        pop!(time_by_periods)
+    end
     return time_by_periods, wind_by_periods, solar_by_periods
 end
 

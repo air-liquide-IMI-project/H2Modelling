@@ -36,6 +36,7 @@ function dynamic_solver(
     n_ev_compute :: Int = 1,
     states :: Array{Float64},
     initial_charge = 0.,
+    discount_factor = 1.,
     verbose = false,
 )
     #gurobi_env = Gurobi.Env()
@@ -120,7 +121,7 @@ function dynamic_solver(
                     # Compute the cost of taking this action
                     # Since we don't know the production level class of the next week, we take the mean
                     next_week_cost = sum([prob * V[a, c, t+1] for (c, prob) in enumerate(classes_probas)])
-                    cost_action = mean(cost_per_profile) + next_week_cost
+                    cost_action = mean(cost_per_profile) + discount_factor * next_week_cost
                     expect_bat = mean(bat_level_per_profile)
                     expect_prod = mean(prod_level_per_profile)
                     # Update the best cost and policy
