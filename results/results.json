@@ -1,0 +1,69 @@
+{
+    "previous": [
+        {
+            "T": 10,
+            "milp_cost": 2.438951411605017e6,
+            "no_policy_gap": 1.21,
+            "policy_cost": 4.300785412795097e6,
+            "N_STATES": 10,
+            "n_classes": 20,
+            "no_policy_cost": 2.4686383940951154e6,
+            "policy_gap": 76.33,
+            "classifier": "classify_kmeans",
+            "N_EV": 2,
+            "period_length": 72
+        },
+        {
+            "T": 20,
+            "milp_cost": 5.632610695664958e6,
+            "no_policy_gap": 1.09,
+            "policy_cost": 7.3443482937227115e6,
+            "N_STATES": 10,
+            "n_classes": 20,
+            "no_policy_cost": 5.694043248856264e6,
+            "policy_gap": 30.38,
+            "classifier": "classify_kmeans",
+            "N_EV": 2,
+            "period_length": 48
+        },
+        {
+            "T": 20,
+            "milp_cost": 5.632610695664958e6,
+            "no_policy_gap": 1.09,
+            "policy_cost": 8.1999674566155765e6,
+            "N_STATES": 10,
+            "n_classes": 20,
+            "no_policy_cost": 5.694043248856264e6,
+            "policy_gap": 45.58,
+            "classifier": "classify_uniform_thresholds",
+            "N_EV": 2,
+            "period_length": 48
+        },
+        {
+            "T": 20,
+            "milp_cost": 5.632610695664958e6,
+            "no_policy_gap": 1.09,
+            "policy_cost": 8.680264573539726e6,
+            "N_STATES": 10,
+            "n_classes": 10,
+            "no_policy_cost": 5.694043248856264e6,
+            "policy_gap": 54.1,
+            "classifier": "classify_uniform_thresholds",
+            "N_EV": 2,
+            "period_length": 48
+        },
+        {
+            "T": 20,
+            "milp_cost": 5.632610695664958e6,
+            "no_policy_gap": 1.09,
+            "policy_cost": 7.083047112887949e6,
+            "N_STATES": 10,
+            "n_classes": 10,
+            "no_policy_cost": 5.694043248856264e6,
+            "policy_gap": 25.75,
+            "classifier": "classify_uniform_thresholds",
+            "N_EV": 20,
+            "period_length": 48
+        }
+    ]
+}
