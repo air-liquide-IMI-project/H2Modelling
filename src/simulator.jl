@@ -123,6 +123,7 @@ function optimal(
     wind_val,
     initial_charge = 0.,
     initial_stock = states[1],
+    final_stock = -1.,
     verbose = false
 )
     T = length(wind_val)
@@ -138,6 +139,7 @@ function optimal(
         solar_profile = overall_solar,
         initial_charge = initial_charge,
         initial_stock = initial_stock,
+        final_stock = final_stock,
         verbose = verbose
     )
 
@@ -166,6 +168,7 @@ function simulator_no_policy(
     states :: Array{Float64},
     initial_charge = 0.,
     initial_stock = states[1],
+    final_stock = -1.
 )
     T = length(wind_val)
     # Initialisation
@@ -176,13 +179,18 @@ function simulator_no_policy(
     current_charge = initial_charge
     # Main loop 
     for t in 1:T
+        if t == T
+            week_final_stock = final_stock
+        else
+            week_final_stock = -1.
+        end
         output = solve(
             wind_profile = wind_val[t],
             solar_profile = solar_val[t],
             initial_charge = current_charge,
             initial_stock = current_stock,
             final_charge = -1.,
-            final_stock = -1,
+            final_stock = week_final_stock,
             verbose = false
         )
         # Update the state
