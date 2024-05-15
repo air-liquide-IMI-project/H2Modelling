@@ -71,21 +71,21 @@ function plot_solution(
     end
     # Plot the production & tank charge over time
     prod = plot(size=(1200, 500), legend=:topleft, xlabel="Time (h)", ylabel="Production (Kg)",
-        title="Hydrogen, Demand : $demand kg/h, Electrolyser: $(trunc(electro_capa / EELEC)) kg/h")
+        title="Hydrogen, Demand : $demand kg/h, Electrolyser: $(trunc(electro_capa / EELEC)) kg/h", margin = 8Plots.mm)
     plot!(prod, time, prod_out, label="Production")
     # Plot the consumptions, curtailment and battery charge
     cons = plot(size=(1200, 500), legend=:topleft, xlabel="Time (h)", ylabel="Electricity consumption (Mwh)",
-        title="Consumption, Solar capacity: $(trunc(solar_capa)) MW, Wind capacity: $(trunc(wind_capa)) MW")
+        title="Consumption, Solar capacity: $(trunc(solar_capa)) MW, Wind capacity: $(trunc(wind_capa)) MW", margin = 8Plots.mm)
     plot!(cons, time, elec_grid, label="Grid consumption")
     plot!(cons, time, cons_ppa, label="PPA consumption")
     plot!(cons, time, -curtailment, label="Curtailment")
     # Plot the charge levels
     level_bat = plot(size=(1200, 500), legend=:topleft, xlabel="Time (h)", ylabel="Battery charge (Mwh)",
-        title="Battery charge level, Battery capacity : $(trunc(battery_capa)) MWh")
+        title="Battery charge level, Battery capacity : $(trunc(battery_capa)) MWh", margin = 8Plots.mm)
     plot!(level_bat, time_ext, charge_out, label="Battery charge")
     # Plot the tank charge level
     level_tank = plot(size=(1200, 500), legend=:topleft, xlabel="Time (h)", ylabel="Tank charge (Kg)",
-        title="Tank charge level, Tank capacity : $(trunc(tank_capa)) Kg")
+        title="Tank charge level, Tank capacity : $(trunc(tank_capa)) Kg", margin = 8Plots.mm)
     plot!(level_tank, time_ext, stock_out, label="Tank charge")
 
     return prod, cons, level_bat, level_tank
