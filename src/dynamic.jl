@@ -32,7 +32,8 @@ function dynamic_solver(
     solar_train :: Array{Array{Float64, 1}},
     classes_train :: Array{Int},
     classes_probas :: Array{Float64},
-    profiles_generator :: Function,
+    profiles_generator_solar :: Function,
+    profiles_generator_wind :: Function,
     n_ev_compute :: Int = 1,
     states :: Array{Float64},
     initial_charge = 0.,
@@ -68,6 +69,7 @@ function dynamic_solver(
         Threads.@threads for x in 1:N
             # Loop over the classes 
             # One class represent the "level" of energy available in the system over the incoming week
+            # If we do prediction specific to the week, we only explore the class corresponding to the week
             for class in 1:number_of_classes
                 best_cost = Inf
                 # Enumerate the possible actions
@@ -86,8 +88,8 @@ function dynamic_solver(
                 for a in reachable_states
                     # Get the possible wind and solar profiles for the coming week
                     # We generate n_ev_compute possible profiles
-                    possible_wind = profiles_generator(t, wind_train, classes_train,  n_ev_compute, period_length, class)
-                    possible_solar = profiles_generator(t, solar_train, classes_train, n_ev_compute, period_length, class)
+                    possible_wind = profiles_generator_wind(t, wind_train, classes_train,  n_ev_compute, period_length, class)
+                    possible_solar = profiles_generator_solar(t, solar_train, classes_train, n_ev_compute, period_length, class)
                     # Keep in memory the costs and corresponding charge and production level for each action
                     cost_per_profile = zeros(Float64, n_ev_compute)
                     bat_level_per_profile = zeros(Float64, n_ev_compute)

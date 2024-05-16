@@ -89,4 +89,17 @@ function generate_period_from_sub_period(
 
 end
 
+function get_same_week(
+    t :: Int, # Index of the day relative to the year
+    periods_train :: Array{Array{Float64, 1}},
+    classes_train :: Array{Int},
+    k :: Int = 1,
+    period_length :: Int = 24* 7,
+    class :: Int = -1, # Global class of the periods to generate, if -1, choose randomly
+    sub_period_length :: Int = 24,
+)
+    return [periods_train[t]]
+
+end
+
 

@@ -493,6 +493,21 @@
             "classifier": "classify_uniform_thresholds",
             "N_EV": 5,
             "period_length": 168
+        },
+        {
+            "T": 10,
+            "discount_factor": 1,
+            "milp_cost": 9.423788506324107e6,
+            "no_policy_gap": 0.42,
+            "policy_cost": 1.6268151190767707e7,
+            "generator": "get_same_week",
+            "N_STATES": 10,
+            "n_classes": 1,
+            "no_policy_cost": 9.464230083943656e6,
+            "policy_gap": 72.62,
+            "classifier": "class_is_index",
+            "N_EV": 1,
+            "period_length": 168
         }
     ]
 }

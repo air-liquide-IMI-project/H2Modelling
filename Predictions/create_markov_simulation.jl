@@ -1,27 +1,30 @@
-using CSV, DataFrames
+using CSV, DataFrames, StatsBase, Plots
 
 # Read the transition matrix from the CSV file
-transition_matrix = CSV.read("transition_matrix.csv", DataFrame)
+transition_matrix = CSV.read("Predictions/transition_matrix.csv", DataFrame)
 
 # Convert DataFrame to matrix
-transition_matrix = convert(Matrix, transition_matrix)
+transition_matrix = Matrix(transition_matrix)
 
 # Function to simulate Markov chain
 function simulate_markov_chain(transition_matrix, start_index, num_steps)
+    bins = LinRange(0, 1, 200)
     num_states = size(transition_matrix, 1)
     current_state = start_index
     chain_history = [current_state]
+    profile_history = [bins[current_state]]
     
     for _ in 1:num_steps
         # Select next state based on transition probabilities
-        probabilities = transition_matrix[current_state, :]
-        next_state = rand(1:num_states, weights=probabilities)
+        probabilities = transition_matrix[current_state, :][1:end-1]
+        next_state = sample(1:num_states, Weights(probabilities))
         
         push!(chain_history, next_state)
         current_state = next_state
+        push!(profile_history, bins[current_state])
     end
     
-    return chain_history
+    return profile_history
 end
 
 # Choose a starting index
@@ -34,3 +37,5 @@ simulation_result = simulate_markov_chain(transition_matrix, start_index, num_st
 # Display simulation result
 println("Simulation result:")
 println(simulation_result)
+
+plot(simulation_result, title="Markov Chain Simulation", xlabel="Time Step", ylabel="State Index", legend=false)
